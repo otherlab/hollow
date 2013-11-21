@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+# A 2D Poisson test
+
+from __future__ import division,print_function,unicode_literals,absolute_import
+from hollow import *
+from example import *
+from geode import *
+from geode.geometry.platonic import *
+from geode.value import parser
+import sys
+
+# Properties
+props = PropManager()
+petsc_options = props.add('petsc','')
+resolution = props.add('resolution',30)
+refine_volume = props.add('refine_volume',0.)
+refine_levels = props.add('refine_levels',0)
+order = props.add('order',1)
+boundary_condition = props.add('bc','dirichlet').set_allowed('dirichlet neumann'.split()) \
+  .set_help('boundary condition type')
+parser.parse(props,'Laplace test')
+
+def create_mesh(comm):
+  # Create mesh data
+  n = resolution()
+  m = 3*n//2
+  mesh = TriangleTopology(grid_topology(m,n))
+  X = zeros((m+1,n+1,2))
+  X[:,:,0] = linspace(0,1,num=m+1)[:,None]
+  X[:,:,1] = linspace(0,1,num=n+1)[None,:]
+
+  # Convert to petsc
+  dm = dmplex_mesh(comm,mesh,X.reshape(-1,2))
+  if refine_volume():
+    dm.volume_refine(refine_volume())
+  dm.distribute('chaco')
+  if refine_levels():
+    dm.uniform_refine(refine_levels())
+
+  # Print some information
+  counts = asarray([mesh.n_vertices,mesh.n_edges,mesh.n_faces])
+  print('mesh counts = %s'%counts)
+  print('dm counts   = %s'%dm.counts)
+  assert all(counts==dm.counts)
+
+  return dm
+
+def main():
+  options = [sys.argv[0],'-petscspace_order',order()]
+  petsc_initialize('2D Laplace test',map(str,options)+petsc_options().split())
+  comm = petsc_comm_world()
+  snes = SNES(comm)
+  dm = create_mesh(comm)
+  snes.set_dm(dm)
+  dim = dm.dim
+  neumann = boundary_condition()=='neumann'
+
+  # Finite elements and models
+  fe = FE(comm,dim,1),
+  print('fe dofs = %s'%fe[0].dofs)
+  fe_bd = fe_aux = ()
+  if neumann:
+    fe_bd = fe # FE(comm,dim,1,"bd_"),
+    print('fe bd dofs = %s'%fe_bd[0].dofs)
+  if 0:
+    # Material quadrature must agree with solution quadrature
+    fe_aux = FE(comm,dim,1,"mat_",fe[0].qorder()),
+    print('fe aux dofs = %s'%fe_aux[0].dofs)
+  model = LaplaceTest2d(fe,fe_aux,fe_bd,neumann)
+  dm.set_model(model)
+
+  # Sections and fields
+  counts = dm.mark_boundary('boundary')
+  print('boundary: faces = %d, all = %d'%(counts[0],counts[1]))
+  dm.create_default_section(('potential',),model.fe,'boundary',() if neumann else (0,))
+  u = dm.create_global_vector()
+  r = u.clone()
+  if model.fe_aux:
+    dm_aux = dm.clone()
+    dm_aux.create_default_section(('nu',),model.fe_aux,'',())
+    assert 0 # Need clean way to set fields from python (equivalent of SetupMaterial in snes ex12)
+
+  # Matrix
+  A = dm.create_matrix()
+  if neumann:
+    A.set_constant_nullspace()
+  snes.set_jacobian(A,A)
+
+  # Configure snes
+  snes.set_from_options()
+
+  # Solve
+  u.set(0)
+  snes.solve(None,u)
+  print('snes iterations = %d'%snes.iterations)
+  print('L2 error = %g'%dm.L2_error_vs_exact(u))
+
+if __name__=='__main__':
+  main()

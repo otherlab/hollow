@@ -1,0 +1,4 @@
+Import('env library latex')
+
+library(env,'hollow',pyname='hollow_wrap')
+latex('fem')

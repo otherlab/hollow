@@ -1,0 +1,3 @@
+Import('env library')
+
+library(env,'example',pyname='example_wrap',libs=['hollow'])
