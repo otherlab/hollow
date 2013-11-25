@@ -25,7 +25,17 @@ Model::Model(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd)
   , g3(fe.size(),fe.size())
   , boundary(fe.size())
   , exact(fe.size()) {
-  GEODE_ASSERT(!fe_bd.size() || fe.size()==fe_bd.size());
+  // Check consistency
+  for (const auto& f : fe)
+    GEODE_ASSERT(f->spatial_dimension()==dim);
+  for (const auto& f : fe_aux)
+    GEODE_ASSERT(f->spatial_dimension()==dim);
+  if (fe_bd.size()) {
+    GEODE_ASSERT(fe.size()==fe_bd.size());
+    for (const auto& f : fe_bd)
+      GEODE_ASSERT(f->spatial_dimension()==dim-1);
+  }
+
   for (const int i : range(fep    .size())) fep    [i] = fe    [i]->fe;
   for (const int i : range(fep_aux.size())) fep_aux[i] = fe_aux[i]->fe;
   for (const int i : range(fep_bd .size())) fep_bd [i] = fe_bd [i]->fe;

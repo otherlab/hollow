@@ -2,6 +2,8 @@
 
 #include <hollow/fe.h>
 #include <hollow/mpi.h>
+#include <geode/array/Array2d.h>
+#include <geode/array/Subarray.h>
 #include <geode/python/Class.h>
 #include <geode/utility/Log.h>
 namespace hollow {
@@ -9,6 +11,7 @@ namespace hollow {
 using Log::cout;
 using std::endl;
 GEODE_DEFINE_TYPE(FE)
+typedef PetscReal T;
 
 FE::FE(const MPI_Comm comm, const int dim, const int components, const string& prefix, const int qorder) {
   GEODE_ASSERT(qorder,"qorder must positive for set or negative for default");
@@ -51,6 +54,10 @@ FE::FE(const MPI_Comm comm, const int dim, const int components, const string& p
   PetscQuadrature q;
   CHECK(PetscDTGaussJacobiQuadrature(dim,qorder>0?qorder:order,-1,1,&q));
   GEODE_ASSERT(q.numPoints,"Empty quadratures cause havoc elsewhere, need order at least 1");
+  cout <<(prefix.size()?"fe ":"fe")<<prefix<<": dim "<<dim<<", quad ";
+  if (dim==1) cout << RawArray<const T>(q.numPoints,q.points)<<endl;
+  else if (dim==2) cout << RawArray<const Vector<T,2>>(q.numPoints,(const Vector<T,2>*)q.points)<<endl;
+  else if (dim==3) cout << RawArray<const Vector<T,3>>(q.numPoints,(const Vector<T,3>*)q.points)<<endl;
   CHECK(PetscFESetQuadrature(fe,q));
 }
 

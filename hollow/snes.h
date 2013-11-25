@@ -33,6 +33,9 @@ public:
   void solve(Ptr<const Vec> b, Vec& x);
 
   int iterations() const;
+
+  // Compute function
+  void residual(const Vec& x, Vec& f) const;
 };
 
 }

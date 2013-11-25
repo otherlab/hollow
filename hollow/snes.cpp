@@ -39,6 +39,10 @@ int SNES::iterations() const {
   return n;
 }
 
+void SNES::residual(const Vec& x, Vec& f) const {
+  CHECK(SNESComputeFunction(snes,x.v,f.v));
+}
+
 }
 using namespace hollow;
 
@@ -51,5 +55,6 @@ void wrap_snes() {
     .GEODE_METHOD(set_jacobian)
     .GEODE_METHOD(solve)
     .GEODE_GET(iterations)
+    .GEODE_METHOD(residual)
     ;
 }

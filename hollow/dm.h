@@ -5,6 +5,7 @@
 #include <hollow/mat.h>
 #include <hollow/model.h>
 #include <geode/mesh/forward.h>
+#include <geode/mesh/ids.h>
 #include <geode/python/Ptr.h>
 #include <petscdmplex.h>
 namespace hollow {
@@ -78,7 +79,8 @@ public:
 // Create an unrefined unit box DM
 HOLLOW_EXPORT Ref<DMPlex> dmplex_unit_box(const MPI_Comm comm, const int dim);
 
-// Convert a 2D or 3D shell mesh to a DM
-HOLLOW_EXPORT Ref<DMPlex> dmplex_mesh(const MPI_Comm comm, const TriangleTopology& mesh, Array<const real,2> X);
+// Convert a 2D or 3D shell mesh to a DM.
+// Returns the DMPlex and the ordered list of representative halfedges (since corner meshes have no EdgeIds).
+HOLLOW_EXPORT Tuple<Ref<DMPlex>,Array<const HalfedgeId>> dmplex_mesh(const MPI_Comm comm, const TriangleTopology& mesh, Array<const real,2> X);
 
 }

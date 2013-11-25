@@ -3,7 +3,13 @@
 #include <hollow/model.h>
 #include <geode/python/Class.h>
 #include <geode/python/stl.h>
+#include <geode/utility/Log.h>
 namespace hollow {
+
+using Log::cout;
+using std::endl;
+typedef double T;
+typedef Vector<T,2> TV;
 
 /* A 2D Laplace test.  For Dirichlet conditions, we use exact solution:
 
@@ -33,20 +39,35 @@ struct LaplaceTest2d : public Model {
 protected:
   LaplaceTest2d(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd, const bool neumann)
     : Base(fe,fe_aux,fe_bd) {
-    exact[0] = [](const T x[2], T* u) { *u = sqr(x[0])+sqr(x[1]); };
+    exact[0] = !neumann ? [](const T x[], T* u) { *u = sqr(x[0])+sqr(x[1]); }
+                        : [](const T x[], T* u) { *u = sqr(x[0])+sqr(x[1])-2./3; };
     boundary[0] = exact[0]; // TODO: Make this the same only along the boundary?
-    f0[0] = [](FE_ARGS, T f0[]) { f0[0] = 4; };
-    b0[0] = neumann ? [](FE_ARGS, const T n[], T f0[]) { f0[0] = abs(x[0]-1)<1e-9 || abs(x[1]-1)<1e-9 ? -2 : 0; }
-                    : [](FE_ARGS, const T n[], T f0[]) { f0[0] = 0; };
+    #define CHECK_X() ({ \
+      for (int i=0;i<d;i++) \
+        GEODE_ASSERT(-1e-5<x[i] && x[i]<1+1e-5,format("evaluation outside box: %s",str(RawArray<const T>(d,x)))); \
+      })
+    #define CHECK_N() ({ \
+      const Box<TV> box(TV(0,0),TV(1,1)); \
+      const auto xv = vec(x[0],x[1]), nv = vec(n[0],n[1]); \
+      GEODE_ASSERT(box.phi(xv)<1e-10,format("evaluation not on boundary: x %s",str(xv))); \
+      GEODE_ASSERT(sqr_magnitude(box.normal(xv)-nv)<1e-10, \
+        format("bad normal: x %s, n %s (expected %s)",str(xv),str(nv),str(box.normal(xv)))); \
+      })
+    f0[0] = [](FE_ARGS, T f0[]) { CHECK_X(); f0[0] = 4; };
+    b0[0] = neumann ? [](FE_ARGS, const T n[], T f0[]) { CHECK_N(); f0[0] = abs(x[0]-1)<1e-5 || abs(x[1]-1)<1e-5 ? -2 : 0; }
+                    : [](FE_ARGS, const T n[], T f0[]) { CHECK_N(); f0[0] = 0; };
     b1[0] = [](FE_ARGS, const T n[], T f1[]) {
+      CHECK_X();
       for (int i=0;i<d;i++)
         f1[i] = 0;
     };
     f1[0] = [](FE_ARGS, T f1[]) {
+      CHECK_X();
       for (int i=0;i<d;i++)
         f1[i] = du[i];
     };
     g3(0,0) = [](FE_ARGS, T g3[]) {
+      CHECK_X();
       for (int i=0;i<d;i++)
         g3[i*d+i] = 1;
     };

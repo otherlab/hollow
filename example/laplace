@@ -18,7 +18,9 @@ refine_levels = props.add('refine_levels',0)
 order = props.add('order',1)
 boundary_condition = props.add('bc','dirichlet').set_allowed('dirichlet neumann'.split()) \
   .set_help('boundary condition type')
+dump_mesh = props.add('dump_mesh',False)
 parser.parse(props,'Laplace test')
+print('command = %s'%parser.command(props))
 
 def create_mesh(comm):
   # Create mesh data
@@ -28,14 +30,25 @@ def create_mesh(comm):
   X = zeros((m+1,n+1,2))
   X[:,:,0] = linspace(0,1,num=m+1)[:,None]
   X[:,:,1] = linspace(0,1,num=n+1)[None,:]
+  X = X.reshape(-1,2)
 
   # Convert to petsc
-  dm = dmplex_mesh(comm,mesh,X.reshape(-1,2))
+  dm,edges = dmplex_mesh(comm,mesh,X)
   if refine_volume():
     dm.volume_refine(refine_volume())
   dm.distribute('chaco')
   if refine_levels():
     dm.uniform_refine(refine_levels())
+
+  # Dump mesh information
+  if dump_mesh():
+    print('mesh dump:')
+    for v in mesh.vertices():
+      print('  v %d = %s'%(v,X[v]))
+    for i,e in enumerate(edges):
+      s = mesh.src(e)
+      d = mesh.dst(e)
+      print('  e %d = %s (%d %d)'%(i,(X[s]+X[d])/2,s,d))
 
   # Print some information
   counts = asarray([mesh.n_vertices,mesh.n_edges,mesh.n_faces])
@@ -47,20 +60,22 @@ def create_mesh(comm):
 
 def main():
   options = [sys.argv[0],'-petscspace_order',order()]
+  neumann = boundary_condition()=='neumann'
+  if neumann:
+    options.extend(['-bd_petscspace_order',order()])
   petsc_initialize('2D Laplace test',map(str,options)+petsc_options().split())
   comm = petsc_comm_world()
   snes = SNES(comm)
   dm = create_mesh(comm)
   snes.set_dm(dm)
   dim = dm.dim
-  neumann = boundary_condition()=='neumann'
 
   # Finite elements and models
   fe = FE(comm,dim,1),
   print('fe dofs = %s'%fe[0].dofs)
   fe_bd = fe_aux = ()
   if neumann:
-    fe_bd = fe # FE(comm,dim,1,"bd_"),
+    fe_bd = FE(comm,dim-1,1,"bd_"),
     print('fe bd dofs = %s'%fe_bd[0].dofs)
   if 0:
     # Material quadrature must agree with solution quadrature
@@ -80,6 +95,13 @@ def main():
     dm_aux.create_default_section(('nu',),model.fe_aux,'',())
     assert 0 # Need clean way to set fields from python (equivalent of SetupMaterial in snes ex12)
 
+  # Check residual for u = 0
+  if 1:
+    u.set(0)
+    f = u.clone()
+    snes.residual(u,f)
+    print('RHS = %s (sum %g)'%(f.local_copy(),f.sum()))
+
   # Matrix
   A = dm.create_matrix()
   if neumann:
@@ -94,6 +116,8 @@ def main():
   snes.solve(None,u)
   print('snes iterations = %d'%snes.iterations)
   print('L2 error = %g'%dm.L2_error_vs_exact(u))
+  if u.local_size<100:
+    print('u = %s'%repr(list(u.local_copy())))
 
 if __name__=='__main__':
   main()

@@ -210,11 +210,13 @@ Ref<DMPlex> dmplex_unit_box(const MPI_Comm comm, const int dim) {
 
 static inline HalfedgeId canon(const TriangleTopology& mesh, const HalfedgeId e) {
   const auto v = mesh.vertices(e);
-  const auto c = v.x<v.y ? e : mesh.reverse(e);
-  return mesh.is_boundary(c) ? mesh.reverse(c) : c;
+  const auto r = mesh.reverse(e);
+  return mesh.is_boundary(e) ? r
+       : mesh.is_boundary(r) ? e
+                   : v.x<v.y ? e : r;
 }
 
-Ref<DMPlex> dmplex_mesh(const MPI_Comm comm, const TriangleTopology& mesh, Array<const real,2> X) {
+Tuple<Ref<DMPlex>,Array<const HalfedgeId>> dmplex_mesh(const MPI_Comm comm, const TriangleTopology& mesh, Array<const real,2> X) {
   GEODE_ASSERT(mesh.is_garbage_collected(),"mesh must be garbage collected to ensure contiguous indices");
   const int nf = mesh.n_faces(),
             nv = mesh.n_vertices(),
@@ -238,10 +240,11 @@ Ref<DMPlex> dmplex_mesh(const MPI_Comm comm, const TriangleTopology& mesh, Array
 
   // Set cones.  Since corner meshes lack edge ids, we create some first
   Hashtable<HalfedgeId,int> edge_id;
+  Array<HalfedgeId> edges;
   for (const auto e : mesh.halfedges()) {
     const auto c = canon(mesh,e);
     if (e==c) {
-      const int i = edge_id.size();
+      const int i = edges.append(e);
       edge_id.set(e,i);
       const auto v = mesh.vertices(e);
       CHECK(DMPlexSetCone(dm,nf+nv+i,(nf+vec(v.x.id,v.y.id)).data()));
@@ -284,7 +287,7 @@ Ref<DMPlex> dmplex_mesh(const MPI_Comm comm, const TriangleTopology& mesh, Array
   CHECK(VecDestroy(&Xv));
 
   // All done!
-  return new_<DMPlex>(dm);
+  return tuple(new_<DMPlex>(dm),edges.const_());
 }
 
 }
