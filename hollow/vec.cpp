@@ -59,6 +59,11 @@ void Vec::set_local(RawArray<const S> x) {
   CHECK(VecRestoreArray(v,&p));
 }
 
+void Vec::axpy(const S a, const Vec& x) {
+  GEODE_ASSERT(local_size()==x.local_size());
+  CHECK(VecAXPY(v,a,x.v));
+}
+
 }
 using namespace hollow;
 
@@ -72,5 +77,6 @@ void wrap_vec() {
     .GEODE_METHOD(local_copy)
     .GEODE_METHOD(set_local)
     .GEODE_METHOD(sum)
+    .GEODE_METHOD(axpy)
     ;
 }

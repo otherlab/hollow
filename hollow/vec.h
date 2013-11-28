@@ -38,6 +38,8 @@ public:
   void set_local(RawArray<const S> x);
 
   S sum() const;
+
+  void axpy(const S a, const Vec& x);
 };
 
 }
