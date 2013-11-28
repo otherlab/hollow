@@ -24,7 +24,9 @@ Model::Model(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd)
   , g2(fe.size(),fe.size())
   , g3(fe.size(),fe.size())
   , boundary(fe.size())
-  , exact(fe.size()) {
+  , exact(fe.size())
+  , boundary_contexts(fe.size())
+  , exact_contexts(fe.size()) {
   // Check consistency
   for (const auto& f : fe)
     GEODE_ASSERT(f->spatial_dimension()==dim);
@@ -52,6 +54,7 @@ Model::Model(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd)
   fem.f0BdFuncs = b0.data();
   fem.f1BdFuncs = b1.data();
   fem.bcFuncs = boundary.data();
+  fem.bcCtxs = boundary_contexts.data();
 }
 
 Model::~Model() {}

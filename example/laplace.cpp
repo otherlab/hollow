@@ -36,12 +36,21 @@ struct LaplaceTest2d : public Model {
   typedef Model Base;
   static const int d = 2;
 
+  const T zero;
+  T hack_shift;
+
 protected:
   LaplaceTest2d(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd, const bool neumann)
-    : Base(fe,fe_aux,fe_bd) {
-    exact[0] = !neumann ? [](const T x[], T* u) { *u = sqr(x[0])+sqr(x[1]); }
-                        : [](const T x[], T* u) { *u = sqr(x[0])+sqr(x[1])-2./3; };
+    : Base(fe,fe_aux,fe_bd)
+    , zero(0)
+    , hack_shift(0) {
+    exact[0] = [](const T x[], T* u, void* ctx) {
+      const T hack_shift = *(const T*)ctx;
+      *u = sqr(x[0])+sqr(x[1])+hack_shift;
+    };
+    exact_contexts[0] = (void*)&hack_shift;
     boundary[0] = exact[0]; // TODO: Make this the same only along the boundary?
+    boundary_contexts[0] = (void*)&zero;
     #define CHECK_X() ({ \
       for (int i=0;i<d;i++) \
         GEODE_ASSERT(-1e-5<x[i] && x[i]<1+1e-5,format("evaluation outside box: %s",str(RawArray<const T>(d,x)))); \
@@ -136,5 +145,6 @@ void wrap_laplace() {
   typedef Self::FEs FEs;
   Class<Self>("LaplaceTest2d")
     .GEODE_INIT(const FEs&,const FEs&,const FEs&,bool)
+    .GEODE_FIELD(hack_shift)
     ;
 }

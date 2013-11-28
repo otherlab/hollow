@@ -198,7 +198,7 @@ T DMPlex::L2_error_vs_exact(const Vec& v) const {
   for (auto& exact : model->exact)
     GEODE_ASSERT(exact);
   T error;
-  CHECK(DMPlexComputeL2Diff(dm,model->fep.data(),model->exact.data(),v.v,&error));
+  CHECK(DMPlexComputeL2Diff(dm,model->fep.data(),model->exact.data(),model->exact_contexts.data(),v.v,&error));
   return error;
 }
 

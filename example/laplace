@@ -96,7 +96,7 @@ def main():
     assert 0 # Need clean way to set fields from python (equivalent of SetupMaterial in snes ex12)
 
   # Check residual for u = 0
-  if 1:
+  if 0:
     u.set(0)
     f = u.clone()
     snes.residual(u,f)
@@ -115,8 +115,22 @@ def main():
   u.set(0)
   snes.solve(None,u)
   print('snes iterations = %d'%snes.iterations)
+
+  if neumann:
+    # Fit quadratic to shift and pick minimum
+    model.hack_shift = 0
+    a = dm.L2_error_vs_exact(u)**2
+    model.hack_shift = 1
+    c_plus_b = dm.L2_error_vs_exact(u)**2-a
+    model.hack_shift = -1
+    c_minus_b = dm.L2_error_vs_exact(u)**2-a
+    b = (c_plus_b-c_minus_b)/2
+    c = (c_plus_b+c_minus_b)/2
+    model.hack_shift = -b/(2*c)
+
+  # Measure error
   print('L2 error = %g'%dm.L2_error_vs_exact(u))
-  if u.local_size<100:
+  if 0 and u.local_size<100:
     print('u = %s'%repr(list(u.local_copy())))
 
 if __name__=='__main__':
