@@ -1,9 +1,9 @@
 // Wrapper around a DM
 #pragma once
 
-#include <hollow/vec.h>
-#include <hollow/mat.h>
-#include <hollow/model.h>
+#include <hollow/petsc/vec.h>
+#include <hollow/petsc/mat.h>
+#include <hollow/petsc/model.h>
 #include <geode/mesh/forward.h>
 #include <geode/mesh/ids.h>
 #include <geode/python/Ptr.h>

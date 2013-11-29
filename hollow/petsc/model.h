@@ -1,7 +1,7 @@
 // Wrapper around PetscFEM
 #pragma once
 
-#include <hollow/fe.h>
+#include <hollow/petsc/fe.h>
 #include <geode/array/Array2d.h>
 #include <petscfe.h>
 #include <vector>

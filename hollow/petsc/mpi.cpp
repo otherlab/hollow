@@ -1,6 +1,6 @@
 // MPI wrappers and convenience routines
 
-#include <hollow/mpi.h>
+#include <hollow/petsc/mpi.h>
 #include <geode/python/Class.h>
 #include <geode/utility/Log.h>
 namespace hollow {

@@ -1,7 +1,7 @@
 // Wrapper around PetscFE
 #pragma once
 
-#include <hollow/config.h>
+#include <hollow/petsc/config.h>
 #include <geode/array/Array.h>
 #include <geode/python/Object.h>
 #include <petscfe.h>

@@ -1,8 +1,8 @@
 // Wrapper around a petsc Mat
 #pragma once
 
-#include <hollow/config.h>
-#include <hollow/vec.h>
+#include <hollow/petsc/config.h>
+#include <hollow/petsc/vec.h>
 #include <petscmat.h>
 namespace hollow {
 

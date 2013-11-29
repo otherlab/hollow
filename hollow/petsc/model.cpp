@@ -1,6 +1,6 @@
 // Wrapper around PetscFEM
 
-#include <hollow/model.h>
+#include <hollow/petsc/model.h>
 #include <geode/python/Class.h>
 #include <geode/python/stl.h>
 namespace hollow {

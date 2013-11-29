@@ -1,7 +1,7 @@
 // Wrapper around a DM
 
-#include <hollow/dm.h>
-#include <hollow/mpi.h>
+#include <hollow/petsc/dm.h>
+#include <hollow/petsc/mpi.h>
 #include <geode/mesh/TriangleTopology.h>
 #include <geode/python/Class.h>
 #include <geode/python/stl.h>

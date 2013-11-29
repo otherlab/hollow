@@ -1,7 +1,7 @@
 // Wrapper around PetscFE
 
-#include <hollow/fe.h>
-#include <hollow/mpi.h>
+#include <hollow/petsc/fe.h>
+#include <hollow/petsc/mpi.h>
 #include <geode/array/Array2d.h>
 #include <geode/array/Subarray.h>
 #include <geode/python/Class.h>

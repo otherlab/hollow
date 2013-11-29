@@ -1,9 +1,9 @@
 // Wrapper around petsc SNES
 #pragma once
 
-#include <hollow/vec.h>
-#include <hollow/mat.h>
-#include <hollow/dm.h>
+#include <hollow/petsc/vec.h>
+#include <hollow/petsc/mat.h>
+#include <hollow/petsc/dm.h>
 #include <petscsnes.h>
 namespace hollow {
 

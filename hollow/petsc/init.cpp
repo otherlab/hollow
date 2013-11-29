@@ -1,7 +1,7 @@
 // Petsc initialization
 
-#include <hollow/init.h>
-#include <hollow/mpi.h>
+#include <hollow/petsc/init.h>
+#include <hollow/petsc/mpi.h>
 #include <geode/array/Array.h>
 #include <geode/python/stl.h>
 #include <geode/python/wrap.h>

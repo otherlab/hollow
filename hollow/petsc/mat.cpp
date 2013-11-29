@@ -1,7 +1,7 @@
 // Wrapper around a petsc Mat
 
-#include <hollow/mat.h>
-#include <hollow/mpi.h>
+#include <hollow/petsc/mat.h>
+#include <hollow/petsc/mpi.h>
 #include <geode/python/Class.h>
 #include <geode/utility/const_cast.h>
 namespace hollow {

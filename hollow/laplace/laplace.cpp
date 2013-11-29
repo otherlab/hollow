@@ -1,6 +1,6 @@
 // A 2D Laplace test
 
-#include <hollow/model.h>
+#include <hollow/petsc/model.h>
 #include <geode/python/Class.h>
 #include <geode/python/stl.h>
 #include <geode/utility/Log.h>
@@ -36,19 +36,21 @@ struct LaplaceTest2d : public Model {
   typedef Model Base;
   static const int d = 2;
 
+  const bool neumann;
   const T zero;
-  T hack_shift;
+  T shift;
 
 protected:
   LaplaceTest2d(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd, const bool neumann)
     : Base(fe,fe_aux,fe_bd)
+    , neumann(neumann)
     , zero(0)
-    , hack_shift(0) {
+    , shift(0) {
     exact[0] = [](const T x[], T* u, void* ctx) {
-      const T hack_shift = *(const T*)ctx;
-      *u = sqr(x[0])+sqr(x[1])+hack_shift;
+      const T shift = *(const T*)ctx;
+      *u = sqr(x[0])+sqr(x[1])+shift;
     };
-    exact_contexts[0] = (void*)&hack_shift;
+    exact_contexts[0] = (void*)&shift;
     boundary[0] = exact[0]; // TODO: Make this the same only along the boundary?
     boundary_contexts[0] = (void*)&zero;
     #define CHECK_X() ({ \
@@ -145,6 +147,7 @@ void wrap_laplace() {
   typedef Self::FEs FEs;
   Class<Self>("LaplaceTest2d")
     .GEODE_INIT(const FEs&,const FEs&,const FEs&,bool)
-    .GEODE_FIELD(hack_shift)
+    .GEODE_FIELD(neumann)
+    .GEODE_FIELD(shift)
     ;
 }

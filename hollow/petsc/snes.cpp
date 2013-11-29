@@ -1,7 +1,7 @@
 // Wrapper around petsc SNES
 
-#include <hollow/snes.h>
-#include <hollow/mpi.h>
+#include <hollow/petsc/snes.h>
+#include <hollow/petsc/mpi.h>
 #include <geode/python/Class.h>
 #include <geode/utility/const_cast.h>
 namespace hollow {

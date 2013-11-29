@@ -1,6 +1,7 @@
 #include <geode/python/module.h>
 
 GEODE_PYTHON_MODULE(hollow_wrap) {
+  // petsc
   GEODE_WRAP(init)
   GEODE_WRAP(mpi)
   GEODE_WRAP(vec)
@@ -9,4 +10,7 @@ GEODE_PYTHON_MODULE(hollow_wrap) {
   GEODE_WRAP(dm)
   GEODE_WRAP(snes)
   GEODE_WRAP(model)
+
+  // laplace
+  GEODE_WRAP(laplace)
 }

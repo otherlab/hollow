@@ -1,5 +1,5 @@
-#include <hollow/config.h>
-#include <hollow/mpi.h>
+#include <hollow/petsc/config.h>
+#include <hollow/petsc/mpi.h>
 #include <geode/utility/debug.h>
 #include <geode/utility/format.h>
 #include <geode/utility/Log.h>

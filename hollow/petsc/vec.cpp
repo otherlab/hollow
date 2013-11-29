@@ -1,6 +1,6 @@
 // Wrapper around a petsc Vec
 
-#include <hollow/vec.h>
+#include <hollow/petsc/vec.h>
 #include <geode/python/Class.h>
 #include <geode/utility/const_cast.h>
 namespace hollow {

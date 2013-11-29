@@ -1,7 +1,7 @@
 // Petsc initialization
 #pragma once
 
-#include <hollow/config.h>
+#include <hollow/petsc/config.h>
 #include <geode/utility/debug.h>
 #include <vector>
 #include <string>

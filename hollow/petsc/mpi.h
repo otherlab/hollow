@@ -1,7 +1,7 @@
 // MPI wrappers and convenience routines
 #pragma once
 
-#include <hollow/config.h>
+#include <hollow/petsc/config.h>
 #include <geode/python/forward.h>
 #include <string>
 namespace hollow {
