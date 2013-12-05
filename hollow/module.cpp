@@ -18,4 +18,7 @@ GEODE_PYTHON_MODULE(hollow_wrap) {
   // iga
   GEODE_WRAP(iga)
   GEODE_WRAP(laplace_iga)
+
+  // elastic
+  GEODE_WRAP(elastic_test)
 }
