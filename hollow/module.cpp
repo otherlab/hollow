@@ -6,6 +6,7 @@ GEODE_PYTHON_MODULE(hollow_wrap) {
   GEODE_WRAP(mpi)
   GEODE_WRAP(vec)
   GEODE_WRAP(mat)
+  GEODE_WRAP(ksp)
   GEODE_WRAP(fe)
   GEODE_WRAP(dm)
   GEODE_WRAP(snes)
@@ -13,4 +14,8 @@ GEODE_PYTHON_MODULE(hollow_wrap) {
 
   // laplace
   GEODE_WRAP(laplace)
+
+  // iga
+  GEODE_WRAP(iga)
+  GEODE_WRAP(laplace_iga)
 }

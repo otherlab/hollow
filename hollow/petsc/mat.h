@@ -4,7 +4,9 @@
 #include <hollow/petsc/config.h>
 #include <hollow/petsc/vec.h>
 #include <petscmat.h>
-namespace hollow {
+namespace geode {
+GEODE_DECLARE_ENUM(MatStructure,HOLLOW_EXPORT)
+} namespace hollow {
 
 struct Mat : public Object {
   GEODE_DECLARE_TYPE(HOLLOW_EXPORT)

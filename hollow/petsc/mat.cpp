@@ -3,8 +3,11 @@
 #include <hollow/petsc/mat.h>
 #include <hollow/petsc/mpi.h>
 #include <geode/python/Class.h>
+#include <geode/python/enum.h>
 #include <geode/utility/const_cast.h>
-namespace hollow {
+namespace geode {
+GEODE_DEFINE_ENUM(MatStructure,HOLLOW_EXPORT)
+} namespace hollow {
 
 GEODE_DEFINE_TYPE(Mat)
 
@@ -35,4 +38,10 @@ void wrap_mat() {
     .GEODE_GET(comm)
     .GEODE_METHOD(set_constant_nullspace)
     ;
+
+  GEODE_ENUM(MatStructure)
+  GEODE_ENUM_VALUE(DIFFERENT_NONZERO_PATTERN)
+  GEODE_ENUM_VALUE(SUBSET_NONZERO_PATTERN)
+  GEODE_ENUM_VALUE(SAME_NONZERO_PATTERN)
+  GEODE_ENUM_VALUE(SAME_PRECONDITIONER)
 }
