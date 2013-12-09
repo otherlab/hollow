@@ -20,6 +20,7 @@ def make_props(**kwargs):
   props.add('gravity',9.8)
   props.add('check',False)
   props.add('view',False)
+  props.add('mode','tao').set_allowed('tao snes'.split())
   for k,v in kwargs.items():
     props.get(k).set(v)
   return props
@@ -30,7 +31,7 @@ def elastic_test(props):
   comm = petsc_comm_world()
   d = props.dim()
   material = props.youngs_modulus(),props.poissons_ratio()
-  rho_g = -props.density()*props.gravity()*axis_vector(d-1,d=d)
+  rho_g = props.density()*props.gravity()*-axis_vector(d-1,d=d)
   iga = NeoHookeanElastic[d](comm,material,rho_g)
   iga.set_from_options()
   iga.set_up()
@@ -50,15 +51,21 @@ def elastic_test(props):
           iga.set_boundary_load (axis,side,i,0)
 
   # Solve
-  snes = iga.create_snes()
-  snes.set_from_options()
-  if props.check():
-    def check(iter,rnorm):
-      snes.consistency_test(u,1e-6,1e-3,2e-10,10)
-    snes.add_monitor(check)
   u = iga.create_vec()
   u.set(0)
-  snes.solve(None,u)
+  if props.mode()=='snes':
+    snes = iga.create_snes()
+    snes.set_from_options()
+    if props.check():
+      def check(iter,rnorm):
+        snes.consistency_test(u,1e-6,1e-3,2e-10,10)
+      snes.add_monitor(check)
+    snes.solve(None,u)
+  elif props.mode()=='tao':
+    tao = iga.create_tao()
+    tao.set_from_options()
+    tao.set_initial_vector(u)
+    tao.solve()
 
   # View
   if props.view():
@@ -68,23 +75,32 @@ def elastic_test(props):
     iga.write_vec(u_file.name,u)
 
     from igakit.io import PetIGA
-    from igakit.plot import plt
     geom = PetIGA().read(geom_file.name)
     u = PetIGA().read_vec(u_file.name)
     #print(u)
     x = geom.copy()
-    print(x.control.shape,u.shape)
     x.control[...,:d] += u.reshape(*(x.control.shape[:2]+(d,)))
-    plt.figure()
-    plt.surface(x)
-    plt.show()
+    if 1:
+      from igakit.plot import plt
+      plt.figure()
+      plt.cwire(x)
+      plt.kwire(x)
+      plt.surface(x)
+      plt.show()
+    else:
+      import pylab
+      n = 20
 
-def test_elastic():
-  elastic_test(make_props(petsc='-snes_monitor -iga_elements 2',check=1))
+def test_elastic_snes():
+  elastic_test(make_props(mode='snes',petsc='-snes_monitor -iga_elements 2',check=1))
+
+def test_elastic_tao():
+  elastic_test(make_props(mode='tao',petsc='-tao_monitor -iga_elements 2',check=1))
 
 if __name__=='__main__':
   test_neo_hookean()
   props = make_props()
   parser.parse(props,'Elastic test')
   print('command = %s'%parser.command(props))
+  petsc_initialize('Elastic test',[sys.argv[0]]+props.petsc().split())
   elastic_test(props)

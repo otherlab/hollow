@@ -22,6 +22,8 @@ protected:
 public:
   ~IGA();
 
+  MPI_Comm comm() const;
+
   #define SIMPLE(type,name,Name) \
     type name() const { type name; CHECK(IGAGet##Name(iga,&name)); return name; } \
     void set_##name(type name) { CHECK(IGASet##Name(iga,name)); }

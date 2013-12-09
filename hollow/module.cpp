@@ -19,6 +19,9 @@ GEODE_PYTHON_MODULE(hollow_wrap) {
   GEODE_WRAP(iga)
   GEODE_WRAP(laplace_iga)
 
+  // tao
+  GEODE_WRAP(tao_solver)
+
   // elastic
   GEODE_WRAP(elastic_test)
   GEODE_WRAP(elastic)

@@ -20,6 +20,10 @@ IGA::~IGA() {
   CHECK(IGADestroy(&const_cast_(iga)));
 }
 
+MPI_Comm IGA::comm() const {
+  return PetscObjectComm((PetscObject)iga);
+}
+
 Array<const int> IGA::bases() const {
   Array<int> bases(dim());
   for (const int i : range(dim())) {
@@ -122,6 +126,7 @@ void wrap_iga() {
   typedef hollow::IGA Self;
   Class<Self>("IGA")
     .GEODE_INIT(MPI_Comm)
+    .GEODE_GET(comm)
     .GEODE_GETSET(dim)
     .GEODE_GETSET(dof)
     .GEODE_GETSET(order)

@@ -2,11 +2,16 @@
 
 #include <hollow/elastic/neo_hookean.h>
 #include <hollow/iga/iga.h>
+#include <hollow/tao/solver.h>
 #include <hollow/petsc/mpi.h>
 #include <geode/math/constants.h>
 #include <geode/python/Class.h>
+#include <geode/utility/Log.h>
 namespace hollow {
 namespace {
+
+using Log::cout;
+using std::endl;
 
 // See hollow/doc/fem.tex for details.
 
@@ -40,13 +45,43 @@ public:
 
   Ref<SNES> create_snes() const override {
     const auto snes = Base::create_snes();
-    const auto objective = [](::SNES snes, ::Vec u, T* energy, void* ctx) {
+    // For now, don't use energy as the objective.
+    // Optimization problems should create_tao below anyways.
+    if (0)
+      CHECK(SNESSetObjective(snes->snes,objective<::SNES>,(void*)this));
+    return snes;
+  }
+
+  Ref<TaoSolver> create_tao() const {
+    const auto tao = new_<TaoSolver>(comm());
+    CHECK(TaoSetType(tao->tao,"tao_nls"));
+    const auto gradient = [](::TaoSolver, ::Vec u, ::Vec grad, void* ctx) {
       const Elastic& self = *(const Elastic*)ctx;
-      CHECK(IGAComputeScalarCustom(self.iga,u,1,energy,Elastic::energy,ctx,PETSC_TRUE));
+      CHECK(IGAComputeFunction(self.iga,u,grad));
       return PetscErrorCode(0);
     };
-    CHECK(SNESSetObjective(snes->snes,objective,(void*)this));
-    return snes;
+    const auto hessian = [](::TaoSolver, ::Vec u, ::Mat* A, ::Mat* P, MatStructure* flag, void* ctx) {
+      const Elastic& self = *(const Elastic*)ctx;
+      GEODE_ASSERT(*A==*P);
+      CHECK(IGAComputeJacobian(self.iga,u,*A));
+      *flag = SAME_NONZERO_PATTERN;
+      PetscFunctionReturn(0);
+    };
+    CHECK(TaoSetObjectiveRoutine(tao->tao,objective<::TaoSolver>,(void*)this));
+    CHECK(TaoSetGradientRoutine(tao->tao,gradient,(void*)this));
+    const auto A = create_mat();
+    CHECK(TaoSetHessianRoutine(tao->tao,A->m,A->m,hessian,(void*)this));
+    return tao;
+  }
+
+  template<class Ignore> static PetscErrorCode objective(Ignore, ::Vec u, T* energy, void* ctx) {
+    const Elastic& self = *(const Elastic*)ctx;
+    HOLLOW_MONITOR_J(self.model.J_range = Box<T>::empty_box());
+    CHECK(IGAComputeScalarCustom(self.iga,u,1,energy,Elastic::energy,ctx,PETSC_TRUE));
+    if (!isfinite(*energy)) // Tao doesn't like infinite energies
+      *energy = 1e10;
+    HOLLOW_MONITOR_J(cout << "J_range = "<<self.model.J_range<<endl);
+    return PetscErrorCode(0);
   }
 
   static TV phi(IGAPoint p, const T* u_) {
@@ -66,7 +101,7 @@ public:
   static PetscErrorCode energy(IGAPoint p, const T* u, const int n, T* energy, void* ctx) {
     assert(n==1);
     const Elastic& self = *(const Elastic*)ctx;
-    *energy = self.model.energy(F(p,u))+dot(self.rho_g,phi(p,u));
+    *energy = self.model.energy(F(p,u))-dot(self.rho_g,phi(p,u));
     return 0;
   }
 
@@ -80,7 +115,7 @@ public:
     const auto P = self.model.stress(F);
     TV* b = (TV*)b_;
     for (int a=0;a<nen;a++)
-      b[a] = P*N1[a] + rho_g*N0[a]; // elasticity + gravity
+      b[a] = P*N1[a] - rho_g*N0[a]; // elasticity + gravity
     return 0;
   }
 
@@ -116,6 +151,7 @@ template<class Model> static void wrap_helper(const char* name) {
   typedef typename Self::TV TV;
   Class<Self>(name)
     .GEODE_INIT(MPI_Comm,RawArray<const T>,TV)
+    .GEODE_METHOD(create_tao)
     ;
 }
 

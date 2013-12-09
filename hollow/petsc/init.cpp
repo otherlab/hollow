@@ -8,6 +8,9 @@
 #if defined(OPEN_MPI) && defined(__linux__)
 #include <dlfcn.h>
 #endif
+#ifdef HOLLOW_TAO
+#include <taosolver.h>
+#endif
 namespace hollow {
 
 bool petsc_initialized() {
@@ -17,8 +20,12 @@ bool petsc_initialized() {
 }
 
 void petsc_finalize() {
-  if (petsc_initialized())
+  if (petsc_initialized()) {
+#ifdef HOLLOW_TAO
+    TaoFinalize();
+#endif
     PetscFinalize();
+  }
 }
 
 // Work around annoying dlopen issue, following http://petsc.cs.iit.edu/petsc4py/petsc4py-dev/rev/300045797445
@@ -38,7 +45,10 @@ void petsc_initialize(const string& help, const vector<string>& args) {
   for(int i=0;i<argc;i++)
     pointers[i] = (char*)args[i].c_str();
   char** argv = pointers.data();
-  PetscInitialize(&argc,&argv,0,help.c_str());
+  CHECK(PetscInitialize(&argc,&argv,0,help.c_str()));
+#ifdef HOLLOW_TAO
+  CHECK(TaoInitialize(0,0,0,0));
+#endif
   GEODE_ASSERT(argc==(int)args.size());
   GEODE_ASSERT(argv==pointers.data());
   atexit(petsc_finalize);
@@ -48,6 +58,9 @@ void petsc_reinitialize() {
   if (!petsc_initialized()) {
     dlopen_workaround();
     PetscInitializeNoArguments();
+#ifdef HOLLOW_TAO
+    CHECK(TaoInitialize(0,0,0,0));
+#endif
     atexit(petsc_finalize);
   }
 }

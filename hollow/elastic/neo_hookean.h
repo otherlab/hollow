@@ -3,6 +3,7 @@
 
 #include <hollow/elastic/lame.h>
 #include <geode/array/RawArray.h>
+#include <geode/geometry/Box.h>
 #include <geode/math/constants.h>
 #include <geode/vector/Matrix.h>
 namespace hollow {
@@ -30,11 +31,16 @@ template<class T> static inline Matrix<T,3> cofactor_differential(const Matrix<T
 #undef ENTRY_
 }
 
+// Flip to enable Jacobian determinant monitoring
+#define HOLLOW_MONITOR_J(...)
+//#define HOLLOW_MONITOR_J(...) __VA_ARGS__
+
 template<int d_> struct NeoHookean {
   static const int d = d_;
   typedef double T;
 
   const T mu, lambda;
+  HOLLOW_MONITOR_J(mutable Box<T> J_range;)
 
   // props = youngs_modulus, poissons_ratio
   NeoHookean(RawArray<const T> props)
@@ -45,6 +51,7 @@ template<int d_> struct NeoHookean {
   T energy(const Matrix<T,d>& F) const {
     // Bonet and Wood, Nonlinear Continuum Mechanics for Finite Element Analysis, Second Edition, pp. 162
     const T J = F.determinant();
+    HOLLOW_MONITOR_J(J_range.enlarge(J));
     if (J <= 0)
       return inf;
     const T log_J = log(J);
@@ -54,7 +61,8 @@ template<int d_> struct NeoHookean {
   // First Piola-Kirchhoff stress
   Matrix<T,d> stress(const Matrix<T,d>& F) const {
     const T J = F.determinant();
-    GEODE_ASSERT(J > 0);
+    if (J <= 0)
+      return Matrix<T,d>(); // Tao calls this routine for infinite energy sometimes, so we have to return something
     return mu*F+(lambda*log(J)-mu)/J*F.cofactor_matrix();
   }
 
