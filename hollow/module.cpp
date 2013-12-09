@@ -21,4 +21,5 @@ GEODE_PYTHON_MODULE(hollow_wrap) {
 
   // elastic
   GEODE_WRAP(elastic_test)
+  GEODE_WRAP(elastic)
 }

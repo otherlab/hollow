@@ -4,14 +4,22 @@
 #include <hollow/petsc/mpi.h>
 #include <geode/python/Class.h>
 #include <geode/utility/const_cast.h>
+#include <geode/utility/Log.h>
+#include <geode/vector/relative_error.h>
 namespace hollow {
 
 GEODE_DEFINE_TYPE(SNES)
+typedef PetscReal T;
+using Log::cout;
+using std::endl;
 
 SNES::SNES(const MPI_Comm comm)
   : snes(0) {
   CHECK(SNESCreate(comm,&const_cast_(snes)));
 }
+
+SNES::SNES(const ::SNES snes)
+  : snes(snes) {}
 
 SNES::~SNES() {
   CHECK(SNESDestroy(&const_cast_(snes)));
@@ -39,8 +47,96 @@ int SNES::iterations() const {
   return n;
 }
 
+T SNES::objective(const Vec& x) const {
+  T ob;
+  CHECK(SNESComputeObjective(snes,x.v,&ob));
+  return ob;
+}
+
 void SNES::residual(const Vec& x, Vec& f) const {
   CHECK(SNESComputeFunction(snes,x.v,f.v));
+}
+
+bool SNES::has_objective() const {
+  PetscErrorCode (*objective)(::SNES,::Vec,T*,void*);
+  void* context;
+  CHECK(SNESGetObjective(snes,&objective,&context));
+  return objective!=0;
+}
+
+void SNES::consistency_test(const Vec& x, const T small, const T rtol, const T atol, const int steps) const {
+  const T log_small = log(small);
+  const auto dx = x.clone(),
+             y  = x.clone(),
+             fm = x.clone(),
+             fp = x.clone(),
+             df = x.clone();
+  const bool has_objective = this->has_objective();
+
+  // Compute information at x
+  const auto f = x.clone();
+  residual(x,f);
+  ::KSP ksp;
+  CHECK(SNESGetKSP(snes,&ksp));
+  ::Mat A,P;MatStructure flag;
+  CHECK(KSPGetOperators(ksp,&A,&P,&flag));
+  flag = DIFFERENT_NONZERO_PATTERN;
+  CHECK(SNESComputeJacobian(snes,x.v,&A,&P,&flag));
+
+  // Try a variety of differential shifts
+  for (int step=0;step<steps;step++) {
+    // Compute an exponentially scaled random value to reduce the chance of accidental success
+    dx->set_random(step,-1,1);
+    T* p;
+    CHECK(VecGetArray(dx->v,&p));
+    for (auto& d : RawArray<T>(dx->local_size(),p))
+      d = copysign(exp(log_small*(2-abs(d))),d); // Exponentially distributed between small and small^2
+    CHECK(VecRestoreArray(dx->v,&p));
+
+    // Evaluate information at x-dx,x+dx
+    T Up,Um;
+    y->waxpy(1,dx,x);
+    if (has_objective)
+      Up = objective(y);
+    residual(y,fp);
+    y->waxpy(-1,dx,x);
+    if (has_objective)
+      Um = objective(y);
+    residual(y,fm);
+
+    // Check objective
+    if (has_objective) {
+      const T d = 2*dot(f,dx);
+      const T aerror = abs((Up-Um)-d),
+              rerror = relative_error(Up-Um,d);
+      cout << "snes objective/residual error = "<<rerror<<" "<<aerror<<" ("<<(Up-Um)<<" vs. "<<d<<")"<<endl;
+      GEODE_ASSERT(rerror<rtol || aerror<atol);
+    }
+
+    // Check residual vs. jacobian
+    fp->axpy(-1,fm); // fp = fp-fm
+    CHECK(MatMult(A,dx->v,df->v));
+    const T scale = max(fp->norm(NORM_MAX),2*df->norm(NORM_MAX));
+    fp->axpy(-2,df);
+    const T error = fp->norm(NORM_MAX)/scale;
+    cout << "snes residual/jacobian error = "<<error<<endl;
+    GEODE_ASSERT(error<rtol);
+  }
+}
+
+typedef boost::function<void(int,T)> Monitor;
+
+void SNES::add_monitor(const Monitor& monitor_) {
+  const auto monitor = new Monitor(monitor_);
+  const auto call = [](::SNES, int iter, T rnorm, void* ctx) {
+    (*(Monitor*)ctx)(iter,rnorm);
+    return PetscErrorCode(0);
+  };
+  const auto del = [](void** ctx) {
+    delete (Monitor*)*ctx;
+    return PetscErrorCode(0);
+  };
+  CHECK(SNESMonitorSet(snes,call,(void*)monitor,del));
 }
 
 }
@@ -56,5 +152,7 @@ void wrap_snes() {
     .GEODE_METHOD(solve)
     .GEODE_GET(iterations)
     .GEODE_METHOD(residual)
+    .GEODE_METHOD(consistency_test)
+    .GEODE_METHOD(add_monitor)
     ;
 }

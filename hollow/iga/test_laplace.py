@@ -19,8 +19,6 @@ def laplace_test(props):
   petsc_set_options([sys.argv[0]]+props.petsc().split())
   comm = petsc_comm_world()
   iga = LaplaceTestIGA(comm)
-  iga.dim = 2
-  iga.dof = 1
   iga.set_from_options()
   iga.set_up()
 

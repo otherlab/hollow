@@ -5,16 +5,19 @@
 #include <hollow/petsc/mat.h>
 #include <hollow/petsc/dm.h>
 #include <petscsnes.h>
+#include <boost/function.hpp>
 namespace hollow {
 
 struct SNES : public Object {
   GEODE_DECLARE_TYPE(HOLLOW_EXPORT)
   typedef Object Base;
+  typedef PetscReal T;
 
   const ::SNES snes;
 
 protected:
   SNES(const MPI_Comm comm);
+  SNES(const ::SNES snes); // Steals ownership
 public:
   ~SNES();
 
@@ -34,8 +37,20 @@ public:
 
   int iterations() const;
 
+  // Compute objective (which must exist)
+  T objective(const Vec& x) const;
+
   // Compute function
   void residual(const Vec& x, Vec& f) const;
+
+  // Do we have an objective function?
+  bool has_objective() const;
+
+  // Compare residuals and jacobians to finite differences
+  void consistency_test(const Vec& x, const T small, const T rtol, const T atol, const int steps) const;
+
+  // Add an additional monitoring routine
+  void add_monitor(const boost::function<void(int,T)>& monitor);
 };
 
 }

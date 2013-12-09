@@ -86,4 +86,36 @@ giving function $f^\alpha_a$ differentiated against the $\beta$th derivatives of
   g^{11}[a,i] : (...) -> [b,c,j,k];
 \end{verbatim}
 
+\section{Elasticity}
+
+We consider the codimension zero nonlinear elastic energy
+\begin{align*}
+\Psi &= \int_\Omega \left( \psi(F) + \rho g \cdot u \right) dx
+\end{align*}
+whose variation is
+\begin{align*}
+\delta \Psi &= \int_\Omega \left( P(F) : \delta F + \rho g \cdot \delta u \right) dx
+\end{align*}
+where
+\begin{align*}
+u,\phi &: \Omega \to \R^3 \\
+\phi(x) &= x + u(x) \\
+F &= \nabla \phi = \frac{d \phi}{d x} = 1 + \nabla u \\
+P &= \frac{d\psi}{dF}
+\end{align*}
+Using the finite element basis
+\begin{align*}
+u = \sum_i u_i N_i(x)
+\end{align*}
+we require the vanishing of the residual
+\begin{align*}
+0 = \frac{\partial \Psi}{\partial u_i}
+  &= \int_\Omega \left( P(F) : \nabla N_i + \rho g \cdot N_i \right) dx
+\end{align*}
+whose derivatives are
+\begin{align*}
+\frac{\partial^2 \Psi}{\partial u_i \partial u_j}
+  &= \int_\Omega \left( \nabla N_i : \frac{\partial P}{\partial F} : \nabla N_j \right) dx
+\end{align*}
+
 \end{document}

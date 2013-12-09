@@ -2,6 +2,7 @@
 #pragma once
 
 #include <hollow/petsc/ksp.h>
+#include <hollow/petsc/snes.h>
 #include <petiga.h>
 #include <vector>
 namespace geode {
@@ -41,42 +42,21 @@ public:
   Array<const int> degrees() const;
   vector<IGABasisType> basis_types() const;
 
-  void set_from_options() {
-    CHECK(IGASetFromOptions(iga));
-  }
+  void set_from_options();
+  virtual void set_up();
+  void set_boundary_value(const int axis, const int side, const int field, const S value);
+  void set_boundary_load(const int axis, const int side, const int field, const S value);
+  Ref<Vec> create_vec() const;
+  Ref<Mat> create_mat() const;
+  Ref<KSP> create_ksp() const;
+  virtual Ref<SNES> create_snes() const;
+  void compute_system(Mat& A, Vec& b);
 
-  virtual void set_up() {
-    CHECK(IGASetUp(iga));
-  }
+  // Write geometry
+  void write(const string& filename) const;
 
-  void set_boundary_value(const int axis, const int side, const int field, const S value) {
-    GEODE_ASSERT(0<=axis && axis<dim());
-    GEODE_ASSERT(0<=side && side<2);
-    GEODE_ASSERT(0<=field && field<dof());
-    CHECK(IGASetBoundaryValue(iga,axis,side,field,value));
-  }
-
-  Ref<Vec> create_vec() const {
-    ::Vec vec;
-    CHECK(IGACreateVec(iga,&vec)); 
-    return new_<Vec>(vec);
-  }
-
-  Ref<Mat> create_mat() const {
-    ::Mat mat;
-    CHECK(IGACreateMat(iga,&mat)); 
-    return new_<Mat>(mat);
-  }
-
-  Ref<KSP> create_ksp() const {
-    ::KSP ksp;
-    CHECK(IGACreateKSP(iga,&ksp));
-    return new_<KSP>(ksp);
-  }
-
-  void compute_system(Mat& A, Vec& b) {
-    CHECK(IGAComputeSystem(iga,A.m,b.v));
-  }
+  // Write solution vector
+  void write_vec(const string& filename, const Vec& x) const;
 };
 
 }

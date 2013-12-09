@@ -57,6 +57,64 @@ vector<IGABasisType> IGA::basis_types() const {
   return types;
 }
 
+void IGA::set_from_options() {
+  CHECK(IGASetFromOptions(iga));
+}
+
+void IGA::set_up() {
+  CHECK(IGASetUp(iga));
+}
+
+void IGA::set_boundary_value(const int axis, const int side, const int field, const S value) {
+  GEODE_ASSERT(0<=axis && axis<dim());
+  GEODE_ASSERT(0<=side && side<2);
+  GEODE_ASSERT(0<=field && field<dof());
+  CHECK(IGASetBoundaryValue(iga,axis,side,field,value));
+}
+
+void IGA::set_boundary_load(const int axis, const int side, const int field, const S value) {
+  GEODE_ASSERT(0<=axis && axis<dim());
+  GEODE_ASSERT(0<=side && side<2);
+  GEODE_ASSERT(0<=field && field<dof());
+  CHECK(IGASetBoundaryLoad(iga,axis,side,field,value));
+}
+
+Ref<Vec> IGA::create_vec() const {
+  ::Vec vec;
+  CHECK(IGACreateVec(iga,&vec)); 
+  return new_<Vec>(vec);
+}
+
+Ref<Mat> IGA::create_mat() const {
+  ::Mat mat;
+  CHECK(IGACreateMat(iga,&mat)); 
+  return new_<Mat>(mat);
+}
+
+Ref<KSP> IGA::create_ksp() const {
+  ::KSP ksp;
+  CHECK(IGACreateKSP(iga,&ksp));
+  return new_<KSP>(ksp);
+}
+
+Ref<SNES> IGA::create_snes() const {
+  ::SNES snes;
+  CHECK(IGACreateSNES(iga,&snes));
+  return new_<SNES>(snes);
+}
+
+void IGA::compute_system(Mat& A, Vec& b) {
+  CHECK(IGAComputeSystem(iga,A.m,b.v));
+}
+
+void IGA::write(const string& filename) const {
+  CHECK(IGAWrite(iga,filename.c_str()));
+}
+
+void IGA::write_vec(const string& filename, const Vec& x) const {
+  CHECK(IGAWriteVec(iga,x.v,filename.c_str()));
+}
+
 }
 using namespace hollow;
 
@@ -77,10 +135,14 @@ void wrap_iga() {
     .GEODE_METHOD(set_from_options)
     .GEODE_METHOD(set_up)
     .GEODE_METHOD(set_boundary_value)
+    .GEODE_METHOD(set_boundary_load)
     .GEODE_METHOD(create_vec)
     .GEODE_METHOD(create_mat)
     .GEODE_METHOD(create_ksp)
+    .GEODE_METHOD(create_snes)
     .GEODE_METHOD(compute_system)
+    .GEODE_METHOD(write)
+    .GEODE_METHOD(write_vec)
     ;
 
   GEODE_ENUM(IGABasisType)

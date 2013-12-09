@@ -33,7 +33,7 @@ template<class Model> static inline void constitutive_model_test(const Model mod
               Um = model.energy(F-dF);
       const auto P = model.stress(F);
       const T error = relative_error(Up-Um,2*inner_product(P,dF));
-      cout << "stress error = "<<error<<endl;
+      //cout << "stress error = "<<error<<endl;
       GEODE_ASSERT(error<1e-6);
     } {
       // Check stress vs. differential
@@ -41,7 +41,7 @@ template<class Model> static inline void constitutive_model_test(const Model mod
                  Pm = model.stress(F-dF),
                  dP = model.differential(F,dF);
       const T error = relative_error(Pp-Pm,T(2)*dP);
-      cout << "differential error = "<<error<<endl;
+      //cout << "differential error = "<<error<<endl;
       GEODE_ASSERT(error<1e-6);
     }
   }

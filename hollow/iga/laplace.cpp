@@ -26,6 +26,7 @@ protected:
   LaplaceTestIGA(const MPI_Comm comm)
     : IGA(comm) {
     set_dim(d);
+    set_dof(1);
     set_order(1); // Only need first derivatives
   }
 public:
@@ -63,7 +64,7 @@ public:
       IGAPointFormPoint(p,x);
       T u;
       IGAPointFormValue(p,U,&u);
-      S[0] = sqr(exact(x[0],x[1])+shift-u);
+      *S = sqr(exact(x[0],x[1])+shift-u);
       return PetscErrorCode(0);
     };
     T sqr_error;
