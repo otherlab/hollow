@@ -55,7 +55,7 @@ template<int d_> struct NeoHookean {
     if (J <= 0)
       return inf;
     const T log_J = log(J);
-    return T(.5)*mu*F.sqr_frobenius_norm()+(T(.5)*lambda*log_J-mu)*log_J;
+    return T(.5)*mu*(F.sqr_frobenius_norm()-d)+(T(.5)*lambda*log_J-mu)*log_J;
   }
 
   // First Piola-Kirchhoff stress

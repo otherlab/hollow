@@ -18,6 +18,10 @@ template<class Model> static inline void constitutive_model_test(const Model mod
   typedef Matrix<T,d> TM;
   const T small = 1e-7;
 
+  // No deformation should be zero energy
+  const T zero = model.energy(TM::identity_matrix());
+  GEODE_ASSERT(zero==0);
+
   for (int step=0;step<steps;step++) {
     // Pick a random noninverted deformation gradient and a small random displacement
     Matrix<T,d> F, dF;
