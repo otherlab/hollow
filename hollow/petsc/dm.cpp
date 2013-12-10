@@ -149,8 +149,8 @@ void DMPlex::create_default_section(const vector<string>& names, const vector<Re
   }
 
   // Extract FE component counts
-  Array<int> components(fes.size());
-  Array<int,2> dofs(fes.size(),dim+1);
+  Array<int> components(int(fes.size()));
+  Array<int,2> dofs(int(fes.size()),dim+1);
   for (const int i : range(components.size())) {
     components[i] = fes[i]->components();
     dofs[i] = fes[i]->dofs();
@@ -173,7 +173,7 @@ void DMPlex::create_default_section(const vector<string>& names, const vector<Re
 
   // Create section
   PetscSection section;
-  CHECK(DMPlexCreateSection(dm,dim,fes.size(),components.data(),dofs.data(),
+  CHECK(DMPlexCreateSection(dm,dim,int(fes.size()),components.data(),dofs.data(),
     boundaries.size(),boundary_fields.data(),boundaries.data(),&section));
   if (names.size())
     for (const int i : range(int(names.size())))

@@ -40,7 +40,7 @@ void petsc_initialize(const string& help, const vector<string>& args) {
   GEODE_ASSERT(!petsc_initialized());
   dlopen_workaround();
 
-  int argc = args.size();
+  int argc = int(args.size());
   Array<char*> pointers(argc,false);
   for(int i=0;i<argc;i++)
     pointers[i] = (char*)args[i].c_str();
@@ -49,7 +49,7 @@ void petsc_initialize(const string& help, const vector<string>& args) {
 #ifdef HOLLOW_TAO
   CHECK(TaoInitialize(0,0,0,0));
 #endif
-  GEODE_ASSERT(argc==(int)args.size());
+  GEODE_ASSERT(size_t(argc)==args.size());
   GEODE_ASSERT(argv==pointers.data());
   atexit(petsc_finalize);
 }
@@ -71,13 +71,13 @@ void petsc_set_options(const vector<string>& args) {
   // Remove all existing options
   CHECK(PetscOptionsClear());
   // Replace with new options
-  int argc = args.size();
+  int argc = int(args.size());
   Array<char*> pointers(argc,false);
   for(int i=0;i<argc;i++)
     pointers[i] = (char*)args[i].c_str();
   char** argv = pointers.data();
   CHECK(PetscOptionsInsert(&argc,&argv,0));
-  GEODE_ASSERT(argc==(int)args.size());
+  GEODE_ASSERT(size_t(argc)==args.size());
   GEODE_ASSERT(argv==pointers.data());
 }
 
