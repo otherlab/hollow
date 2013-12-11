@@ -1,9 +1,11 @@
 // IGA Elasticity solver
 
 #include <hollow/elastic/neo_hookean.h>
+#include <hollow/elastic/warp.h>
 #include <hollow/iga/iga.h>
 #include <hollow/tao/solver.h>
 #include <hollow/petsc/mpi.h>
+#include <geode/array/NdArray.h>
 #include <geode/math/constants.h>
 #include <geode/python/Class.h>
 #include <geode/utility/Log.h>
@@ -15,7 +17,7 @@ using std::endl;
 
 // See hollow/doc/fem.tex for details.
 
-template<class Model> struct Elastic : public IGA {
+template<class Model,class Warp> struct Elastic : public IGA {
   GEODE_DECLARE_TYPE(GEODE_NO_EXPORT)
   typedef IGA Base;
   static const int d = Model::d;
@@ -23,12 +25,14 @@ template<class Model> struct Elastic : public IGA {
   typedef Vector<T,d> TV;
 
   const Model model;
+  const Warp warp;
   const TV rho_g;
 
 protected:
-  Elastic(const MPI_Comm comm, RawArray<const T> material, const TV rho_g)
+  Elastic(const MPI_Comm comm, RawArray<const T> model, RawArray<const T> warp, const TV rho_g)
     : IGA(comm)
-    , model(material)
+    , model(model)
+    , warp(warp)
     , rho_g(rho_g) {
     set_dim(d);
     set_dof(d);
@@ -81,27 +85,29 @@ public:
     if (!isfinite(*energy)) // Tao doesn't like infinite energies
       *energy = 1e10;
     HOLLOW_MONITOR_J(cout << "J_range = "<<self.model.J_range<<endl);
+    if (self.rho_g == TV())
+      GEODE_ASSERT(*energy >= 0);
     return PetscErrorCode(0);
   }
 
-  static TV phi(IGAPoint p, const T* u_) {
-    TV x;
-    IGAPointFormGeomMap(p,x.data());
-    TV u;
-    IGAPointFormValue(p,u_,u.data());
-    return x+u;
+  TV phi(IGAPoint p, const T* u_) const {
+    TV x;IGAPointFormGeomMap(p,x.data());
+    TV u;IGAPointFormValue(p,u_,u.data());
+    return warp.map(x)+u;
   }
 
-  static Matrix<T,d> F(IGAPoint p, const T* u_) {
-    Matrix<T,d> F;
-    IGAPointFormGrad(p,u_,F.data());
-    return F+1;
+  Matrix<T,d> F(IGAPoint p, const T* u_) const {
+    TV x;IGAPointFormGeomMap(p,x.data());
+    Matrix<T,d> F;IGAPointFormGrad(p,u_,F.data());
+    return F+warp.F(x);
   }
 
   static PetscErrorCode energy(IGAPoint p, const T* u, const int n, T* energy, void* ctx) {
     assert(n==1);
     const Elastic& self = *(const Elastic*)ctx;
-    *energy = self.model.energy(F(p,u))-dot(self.rho_g,phi(p,u));
+    *energy = self.model.energy(self.F(p,u));
+    if (self.rho_g != TV())
+      *energy -= dot(self.rho_g,self.phi(p,u));
     return 0;
   }
 
@@ -115,7 +121,10 @@ public:
     const auto P = self.model.stress(F);
     TV* b = (TV*)b_;
     for (int a=0;a<nen;a++)
-      b[a] = P*N1[a] - rho_g*N0[a]; // elasticity + gravity
+      b[a] = P*N1[a]; // elasticity
+    if (self.rho_g != TV())
+      for (int a=0;a<nen;a++)
+        b[a] -= rho_g*N0[a]; // gravity
     return 0;
   }
 
@@ -136,26 +145,36 @@ public:
       }
     return 0;
   }
+
+  NdArray<const TV> map(NdArray<const TV> X) const {
+    NdArray<TV> Y(X.shape,false);
+    for (const int i : range(X.flat.size()))
+      Y.flat[i] = warp.map(X.flat[i]);
+    return Y;
+  }
 };
 
-template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<2>>)
-template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<3>>)
+template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<2>,NoWarp<2>>)
+template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<3>,NoWarp<3>>)
+template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<3>,BendWarp>)
 
 }
 }
 using namespace hollow;
 
-template<class Model> static void wrap_helper(const char* name) {
-  typedef Elastic<Model> Self;
+template<class Model,class Warp> static void wrap_helper(const char* name) {
+  typedef Elastic<Model,Warp> Self;
   typedef typename Self::T T;
   typedef typename Self::TV TV;
   Class<Self>(name)
-    .GEODE_INIT(MPI_Comm,RawArray<const T>,TV)
+    .GEODE_INIT(MPI_Comm,RawArray<const T>,RawArray<const T>,TV)
     .GEODE_METHOD(create_tao)
+    .GEODE_METHOD(map)
     ;
 }
 
 void wrap_elastic() {
-  wrap_helper<NeoHookean<2>>("NeoHookeanElastic2d");
-  wrap_helper<NeoHookean<3>>("NeoHookeanElastic3d");
+  wrap_helper<NeoHookean<2>,NoWarp<2>>("NeoHookeanElastic2d");
+  wrap_helper<NeoHookean<3>,NoWarp<3>>("NeoHookeanElastic3d");
+  wrap_helper<NeoHookean<3>,BendWarp>("NeoHookeanElasticBend");
 }

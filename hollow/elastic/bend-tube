@@ -1,0 +1,145 @@
+#!/usr/bin/env python
+
+from __future__ import division,print_function,absolute_import
+from hollow import *
+from geode import *
+from geode.utility import tryfile
+import sys
+
+def make_props(**kwargs):
+  props = PropManager()
+  props.add('output','').set_abbrev('o').set_required(1)
+  props.add('petsc','')
+  props.add('youngs_modulus',1e4)
+  props.add('poissons_ratio',.45)
+  props.add('density',1000.)
+  props.add('view',False)
+  props.add('resolution',(50,10,1)).set_help('resolution along, around, and across (length, circle, thickness)')
+  props.add('bend',180.).set_help('tube bend angle')
+  props.add('length',5.).set_help('tube length')
+  props.add('radius',1.).set_help('tube outer radius')
+  props.add('thickness',.1).set_help('tube thickness')
+  props.add('degree',2).set_help('nurbs geometry degree')
+  for k,v in kwargs.items():
+    props.get(k).set(v)
+  return props
+
+def geometry_file(props):
+  return os.path.join(props.output(),'geom.dat')
+
+def set_geometry(props,iga):
+  # Create geometry
+  import igakit.cad
+  tube = igakit.cad.grid(shape=props.resolution(),degree=props.degree(),
+                         limits=((0,props.length()),
+                                 (0,2*pi),
+                                 (0,props.thickness())))
+  tube.unclamp(1) # Make middle dimension periodic 
+  X = tube.control[...,:3]
+  z,t,r = rollaxis(X,-1).copy()
+  r = props.radius()-r # [0,thick] -> [R-thick,R]
+  X[...,0] = r*cos(t)
+  X[...,1] = r*sin(t)
+  X[...,2] = z
+
+  # Write to a temporary file
+  geom = geometry_file(props)
+  import igakit.io
+  igakit.io.PetIGA().write(geom,tube)
+
+  # Read temporary file into the iga object
+  iga.read(geom)
+  iga.periodic = 0,1,0
+
+def solve(props):
+  output = props.output()
+  if not props.view():
+    assert not os.path.exists(output)
+    os.makedirs(output)
+    Log.cache_initial_output()
+    Log.configure('bent tube',0,0,100)
+    Log.copy_to_file(output+'/log',False)
+
+  petsc_initialize('Bent tube',[sys.argv[0]]+('''
+    -tao_monitor -tao_converged_reason -tao_type tao_nls -tao_nls_ksp_type cg
+    -iga_view -ksp_max_it 200 -ksp_converged_reason -info %s/info
+    '''%output).split())
+  petsc_add_options([sys.argv[0]]+props.petsc().split())
+  comm = petsc_comm_world()
+  d = 3
+  material = props.youngs_modulus(),props.poissons_ratio()
+  rho_g = 0
+  #iga = NeoHookeanElastic[d](comm,material,(),rho_g)
+  tryfile.write(os.path.join(output,'warp.try'),{'length':props.length(),'angle':pi/180*props.bend()})
+  iga = NeoHookeanElasticBend(comm,material,(props.length(),pi/180*props.bend()),rho_g)
+
+  # Create geometry
+  set_geometry(props,iga)
+
+  # Finish setup
+  iga.set_from_options()
+  iga.set_up()
+
+  # Boundary conditions
+  for axis in 0,2:
+    for side in 0,1:
+      for i in xrange(d):
+        if axis==0 and side==0:
+          iga.set_boundary_value(axis,side,i,0)
+        else:
+          iga.set_boundary_load (axis,side,i,0)
+
+  # Solve
+  u = iga.create_vec()
+  u.set(0)
+  tao = iga.create_tao()
+  iteration = [0]
+  def monitor():
+    i = iteration[0]
+    name = os.path.join(output,'u.%d'%i)
+    with Log.scope('write %d'%i):
+      iga.write_vec(name,u)
+      open(os.path.join(output,'last_frame'),'w').write('%d\n'%i)
+    iteration[0] += 1
+  tao.add_monitor(monitor)
+  tao.set_from_options()
+  tao.set_initial_vector(u)
+  tao.solve()
+
+def view(props):
+  # Initialize
+  output = props.output()
+  frame = int(open(os.path.join(output,'last_frame')).read())
+  warp = tryfile.read(os.path.join(output,'warp.try'))
+  petsc_reinitialize()
+  material = props.youngs_modulus(),props.poissons_ratio()
+  iga = NeoHookeanElasticBend(petsc_comm_world(),material,(warp['length'],warp['angle']),0)
+  d = iga.dim
+
+  # Read geometry and vector
+  from igakit.io import PetIGA
+  geom = PetIGA().read(geometry_file(props))
+  u = PetIGA().read_vec(os.path.join(output,'u.%d'%frame))
+
+  # Visualize
+  x = geom.copy()
+  x.control[...,:d] = iga.map(x.control[...,:d].copy())
+  if 1:
+    x.control[...,:d] += u.reshape(*(x.control.shape[:d]+(d,)))
+  from igakit.plot import plt
+  plt.figure()
+  if 0:
+    plt.cwire(x)
+  if 1:
+    plt.kwire(x)
+  plt.surface(x)
+  plt.show()
+
+if __name__=='__main__':
+  props = make_props()
+  parser.parse(props,'Bent tube')
+  print('command = %s'%parser.command(props))
+  if props.view():
+    view(props)
+  else:
+    solve(props)

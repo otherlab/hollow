@@ -10,6 +10,9 @@ def test_neo_hookean():
   random = Random(1311)
   neo_hookean_test(props,random,100)
 
+def test_warp():
+  warp_all_test(100)
+
 def make_props(**kwargs):
   props = PropManager()
   props.add('petsc','')
@@ -32,7 +35,7 @@ def elastic_test(props):
   d = props.dim()
   material = props.youngs_modulus(),props.poissons_ratio()
   rho_g = props.density()*props.gravity()*-axis_vector(d-1,d=d)
-  iga = NeoHookeanElastic[d](comm,material,rho_g)
+  iga = NeoHookeanElastic[d](comm,material,(),rho_g)
   iga.set_from_options()
   iga.set_up()
 

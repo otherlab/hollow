@@ -43,6 +43,9 @@ public:
   Array<const int> spans() const;
   Array<const int> degrees() const;
   vector<IGABasisType> basis_types() const;
+  Array<const bool> periodic() const;
+  void set_periodic(RawArray<const bool> p);
+  IGAAxis axis(const int i) const;
 
   void set_from_options();
   virtual void set_up();
@@ -54,10 +57,12 @@ public:
   virtual Ref<SNES> create_snes() const;
   void compute_system(Mat& A, Vec& b);
 
-  // Write geometry
+  // Read and write geometry
+  void read(const string& filename);
   void write(const string& filename) const;
 
-  // Write solution vector
+  // Read and write solution vectors
+  void read_vec(const string& filename, Vec& x) const;
   void write_vec(const string& filename, const Vec& x) const;
 };
 

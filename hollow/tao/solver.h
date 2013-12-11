@@ -2,6 +2,7 @@
 #pragma once
 
 #include <hollow/petsc/vec.h>
+#include <boost/function.hpp>
 #include <taosolver.h>
 namespace hollow {
 
@@ -20,6 +21,9 @@ public:
   void set_from_options();
   void set_initial_vector(const Vec& x);
   void solve();
+
+  // Add an additional monitoring routine
+  void add_monitor(const boost::function<void()>& monitor);
 };
 
 }

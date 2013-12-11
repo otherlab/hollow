@@ -28,6 +28,21 @@ void TaoSolver::solve() {
   CHECK(TaoSolve(tao));
 }
 
+typedef boost::function<void()> Monitor;
+
+void TaoSolver::add_monitor(const Monitor& monitor_) {
+  const auto monitor = new Monitor(monitor_);
+  const auto call = [](::TaoSolver, void* ctx) {
+    (*(Monitor*)ctx)();
+    return PetscErrorCode(0);
+  };
+  const auto del = [](void** ctx) {
+    delete (Monitor*)*ctx;
+    return PetscErrorCode(0);
+  };
+  CHECK(TaoSetMonitor(tao,call,(void*)monitor,del));
+}
+
 }
 using namespace hollow;
 
@@ -38,5 +53,6 @@ void wrap_tao_solver() {
     .GEODE_METHOD(set_from_options)
     .GEODE_METHOD(set_initial_vector)
     .GEODE_METHOD(solve)
+    .GEODE_METHOD(add_monitor)
     ;
 }

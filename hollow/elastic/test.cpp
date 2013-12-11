@@ -1,6 +1,7 @@
 // Unit tests for constitutive models
 
 #include <hollow/elastic/neo_hookean.h>
+#include <hollow/elastic/warp.h>
 #include <geode/python/wrap.h>
 #include <geode/random/Random.h>
 #include <geode/utility/Log.h>
@@ -51,9 +52,27 @@ template<class Model> static inline void constitutive_model_test(const Model mod
   }
 }
 
+template<class Warp> void warp_test(const Warp warp, const int steps) {
+  typedef typename Warp::TV TV;
+  const auto random = new_<Random>(18311);
+  const T small = 1e-7,
+          tolerance = 1e-7;
+  for (int s=0;s<steps;s++) {
+    const TV x = random->uniform<TV>(-1,1);
+    const TV dx = small*random->uniform<TV>(-1,1);
+    GEODE_ASSERT(relative_error(warp.map(x+dx)-warp.map(x-dx),T(2)*(warp.F(x)*dx))<tolerance);
+  }
+}
+
 static void neo_hookean_test(RawArray<const T> props, Random& random, const int steps) {
   constitutive_model_test(NeoHookean<2>(props),random,steps);
   constitutive_model_test(NeoHookean<3>(props),random,steps);
+}
+
+static void warp_all_test(const int steps) {
+  warp_test(NoWarp<2>(RawArray<const T>()),steps);
+  warp_test(NoWarp<3>(RawArray<const T>()),steps);
+  warp_test(BendWarp(asarray(vec(7,pi/3))),steps);
 }
 
 }
@@ -61,4 +80,5 @@ using namespace hollow;
 
 void wrap_elastic_test() {
   GEODE_FUNCTION(neo_hookean_test)
+  GEODE_FUNCTION(warp_all_test)
 }

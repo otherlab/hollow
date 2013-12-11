@@ -24,33 +24,31 @@ MPI_Comm IGA::comm() const {
   return PetscObjectComm((PetscObject)iga);
 }
 
+IGAAxis IGA::axis(const int i) const {
+  GEODE_ASSERT(unsigned(i)<unsigned(dim()));
+  IGAAxis axis;
+  CHECK(IGAGetAxis(iga,i,&axis));
+  return axis;
+}
+
 Array<const int> IGA::bases() const {
   Array<int> bases(dim());
-  for (const int i : range(dim())) {
-    IGAAxis axis;
-    CHECK(IGAGetAxis(iga,i,&axis));
-    CHECK(IGAAxisGetSizes(axis,0,&bases[i]));
-  }
+  for (const int i : range(dim()))
+    CHECK(IGAAxisGetSizes(axis(i),0,&bases[i]));
   return bases;
 }
 
 Array<const int> IGA::spans() const {
   Array<int> spans(dim());
-  for (const int i : range(dim())) {
-    IGAAxis axis;
-    CHECK(IGAGetAxis(iga,i,&axis));
-    CHECK(IGAAxisGetSizes(axis,&spans[i],0));
-  }
+  for (const int i : range(dim()))
+    CHECK(IGAAxisGetSizes(axis(i),&spans[i],0));
   return spans;
 }
 
 Array<const int> IGA::degrees() const {
   Array<int> degrees(dim());
-  for (const int i : range(dim())) {
-    IGAAxis axis;
-    CHECK(IGAGetAxis(iga,i,&axis));
-    CHECK(IGAAxisGetDegree(axis,&degrees[i]));
-  }
+  for (const int i : range(dim()))
+    CHECK(IGAAxisGetDegree(axis(i),&degrees[i]));
   return degrees;
 }
 
@@ -59,6 +57,22 @@ vector<IGABasisType> IGA::basis_types() const {
   for (const int i : range(dim()))
     types[i] = iga->basis[i]->type;
   return types;
+}
+
+Array<const bool> IGA::periodic() const {
+  Array<bool> periodic(dim());
+  for (const int i : range(dim())) {
+    PetscBool p;
+    CHECK(IGAAxisGetPeriodic(axis(i),&p));
+    periodic[p] = bool(p);
+  }
+  return periodic;
+}
+
+void IGA::set_periodic(RawArray<const bool> p) {
+  GEODE_ASSERT(p.size()==dim());
+  for (const int i : range(dim()))
+    CHECK(IGAAxisSetPeriodic(axis(i),p[i]?PETSC_TRUE:PETSC_FALSE));
 }
 
 void IGA::set_from_options() {
@@ -111,8 +125,16 @@ void IGA::compute_system(Mat& A, Vec& b) {
   CHECK(IGAComputeSystem(iga,A.m,b.v));
 }
 
+void IGA::read(const string& filename) {
+  CHECK(IGARead(iga,filename.c_str()));
+}
+
 void IGA::write(const string& filename) const {
   CHECK(IGAWrite(iga,filename.c_str()));
+}
+
+void IGA::read_vec(const string& filename, Vec& x) const {
+  CHECK(IGAReadVec(iga,x.v,filename.c_str()));
 }
 
 void IGA::write_vec(const string& filename, const Vec& x) const {
@@ -137,6 +159,7 @@ void wrap_iga() {
     .GEODE_GET(spans)
     .GEODE_GET(degrees)
     .GEODE_GET(basis_types)
+    .GEODE_GETSET(periodic)
     .GEODE_METHOD(set_from_options)
     .GEODE_METHOD(set_up)
     .GEODE_METHOD(set_boundary_value)
@@ -146,6 +169,8 @@ void wrap_iga() {
     .GEODE_METHOD(create_ksp)
     .GEODE_METHOD(create_snes)
     .GEODE_METHOD(compute_system)
+    .GEODE_METHOD(read)
+    .GEODE_METHOD(read_vec)
     .GEODE_METHOD(write)
     .GEODE_METHOD(write_vec)
     ;

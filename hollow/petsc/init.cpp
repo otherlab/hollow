@@ -65,12 +65,10 @@ void petsc_reinitialize() {
   }
 }
 
-void petsc_set_options(const vector<string>& args) {
+void petsc_add_options(const vector<string>& args) {
   // Verify that the first argument isn't an option, since it's ignored
   GEODE_ASSERT(args.size() && args[0].size() && args[0][0]!='-');
-  // Remove all existing options
-  CHECK(PetscOptionsClear());
-  // Replace with new options
+  // Add new options
   int argc = int(args.size());
   Array<char*> pointers(argc,false);
   for(int i=0;i<argc;i++)
@@ -79,6 +77,13 @@ void petsc_set_options(const vector<string>& args) {
   CHECK(PetscOptionsInsert(&argc,&argv,0));
   GEODE_ASSERT(size_t(argc)==args.size());
   GEODE_ASSERT(argv==pointers.data());
+}
+
+void petsc_set_options(const vector<string>& args) {
+  // Remove all existing options
+  CHECK(PetscOptionsClear());
+  // Add new options
+  petsc_add_options(args);
 }
 
 static MPI_Comm petsc_comm_world() {
@@ -92,6 +97,7 @@ void wrap_init() {
   GEODE_FUNCTION(petsc_initialized)
   GEODE_FUNCTION(petsc_initialize)
   GEODE_FUNCTION(petsc_reinitialize)
+  GEODE_FUNCTION(petsc_add_options)
   GEODE_FUNCTION(petsc_set_options)
   GEODE_FUNCTION(petsc_finalize)
   GEODE_FUNCTION(petsc_comm_world)
