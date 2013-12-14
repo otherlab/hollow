@@ -97,25 +97,33 @@ void IGA::set_boundary_load(const int axis, const int side, const int field, con
   CHECK(IGASetBoundaryLoad(iga,axis,side,field,value));
 }
 
+void IGA::set_fix_table(const Vec& b) {
+  CHECK(IGASetFixTable(iga,b.v));
+}
+
 Ref<Vec> IGA::create_vec() const {
+  GEODE_ASSERT(iga->setup);
   ::Vec vec;
   CHECK(IGACreateVec(iga,&vec)); 
   return new_<Vec>(vec);
 }
 
 Ref<Mat> IGA::create_mat() const {
+  GEODE_ASSERT(iga->setup);
   ::Mat mat;
   CHECK(IGACreateMat(iga,&mat)); 
   return new_<Mat>(mat);
 }
 
 Ref<KSP> IGA::create_ksp() const {
+  GEODE_ASSERT(iga->setup);
   ::KSP ksp;
   CHECK(IGACreateKSP(iga,&ksp));
   return new_<KSP>(ksp);
 }
 
 Ref<SNES> IGA::create_snes() const {
+  GEODE_ASSERT(iga->setup);
   ::SNES snes;
   CHECK(IGACreateSNES(iga,&snes));
   return new_<SNES>(snes);
@@ -123,6 +131,23 @@ Ref<SNES> IGA::create_snes() const {
 
 void IGA::compute_system(Mat& A, Vec& b) {
   CHECK(IGAComputeSystem(iga,A.m,b.v));
+}
+
+Ref<Vec> IGA::create_property_vec(const int lo, const int hi) const {
+  const int dof = this->dof();
+  GEODE_ASSERT(hi-lo==dof);
+  const int pdim = property_dim();
+  GEODE_ASSERT(0<=lo && hi<=pdim);
+  const auto x = create_vec();
+  const int n = x->local_size();
+
+  GEODE_ASSERT(lo==0 && hi==dof); // TODO: Make more general
+
+  S* p;
+  CHECK(VecGetArray(x->v,&p));
+  memcpy(p,iga->propertyA,sizeof(S)*n);
+  CHECK(VecRestoreArray(x->v,&p));
+  return x;
 }
 
 void IGA::read(const string& filename) {
@@ -133,8 +158,10 @@ void IGA::write(const string& filename) const {
   CHECK(IGAWrite(iga,filename.c_str()));
 }
 
-void IGA::read_vec(const string& filename, Vec& x) const {
-  CHECK(IGAReadVec(iga,x.v,filename.c_str()));
+Ref<Vec> IGA::read_vec(const string& filename) const {
+  const auto x = create_vec();
+  CHECK(IGAReadVec(iga,x->v,filename.c_str()));
+  return x;
 }
 
 void IGA::write_vec(const string& filename, const Vec& x) const {
@@ -164,11 +191,13 @@ void wrap_iga() {
     .GEODE_METHOD(set_up)
     .GEODE_METHOD(set_boundary_value)
     .GEODE_METHOD(set_boundary_load)
+    .GEODE_METHOD(set_fix_table)
     .GEODE_METHOD(create_vec)
     .GEODE_METHOD(create_mat)
     .GEODE_METHOD(create_ksp)
     .GEODE_METHOD(create_snes)
     .GEODE_METHOD(compute_system)
+    .GEODE_METHOD(create_property_vec)
     .GEODE_METHOD(read)
     .GEODE_METHOD(read_vec)
     .GEODE_METHOD(write)

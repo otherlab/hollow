@@ -51,18 +51,22 @@ public:
   virtual void set_up();
   void set_boundary_value(const int axis, const int side, const int field, const S value);
   void set_boundary_load(const int axis, const int side, const int field, const S value);
+  void set_fix_table(const Vec& b);
   Ref<Vec> create_vec() const;
   Ref<Mat> create_mat() const;
   Ref<KSP> create_ksp() const;
   virtual Ref<SNES> create_snes() const;
   void compute_system(Mat& A, Vec& b);
 
+  // Fill a vector from the given range of property fields
+  Ref<Vec> create_property_vec(const int lo, const int hi) const;
+
   // Read and write geometry
   void read(const string& filename);
   void write(const string& filename) const;
 
   // Read and write solution vectors
-  void read_vec(const string& filename, Vec& x) const;
+  Ref<Vec> read_vec(const string& filename) const;
   void write_vec(const string& filename, const Vec& x) const;
 };
 

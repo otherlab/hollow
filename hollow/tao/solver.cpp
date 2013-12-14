@@ -3,6 +3,7 @@
 #include <hollow/tao/solver.h>
 #include <hollow/petsc/mpi.h>
 #include <geode/python/Class.h>
+#include <geode/utility/interrupts.h>
 namespace hollow {
 
 GEODE_DEFINE_TYPE(TaoSolver)
@@ -10,6 +11,7 @@ GEODE_DEFINE_TYPE(TaoSolver)
 TaoSolver::TaoSolver(const MPI_Comm comm)
   : tao(0) {
   CHECK(TaoCreate(comm,&const_cast_(tao)));
+  add_monitor(check_interrupts);
 }
 
 TaoSolver::~TaoSolver() {

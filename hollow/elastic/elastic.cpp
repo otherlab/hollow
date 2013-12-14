@@ -1,7 +1,6 @@
 // IGA Elasticity solver
 
 #include <hollow/elastic/neo_hookean.h>
-#include <hollow/elastic/warp.h>
 #include <hollow/iga/iga.h>
 #include <hollow/tao/solver.h>
 #include <hollow/petsc/mpi.h>
@@ -17,7 +16,7 @@ using std::endl;
 
 // See hollow/doc/fem.tex for details.
 
-template<class Model,class Warp> struct Elastic : public IGA {
+template<class Model> struct Elastic : public IGA {
   GEODE_DECLARE_TYPE(GEODE_NO_EXPORT)
   typedef IGA Base;
   static const int d = Model::d;
@@ -25,14 +24,12 @@ template<class Model,class Warp> struct Elastic : public IGA {
   typedef Vector<T,d> TV;
 
   const Model model;
-  const Warp warp;
   const TV rho_g;
 
 protected:
-  Elastic(const MPI_Comm comm, RawArray<const T> model, RawArray<const T> warp, const TV rho_g)
+  Elastic(const MPI_Comm comm, RawArray<const T> model, const TV rho_g)
     : IGA(comm)
     , model(model)
-    , warp(warp)
     , rho_g(rho_g) {
     set_dim(d);
     set_dof(d);
@@ -78,45 +75,45 @@ public:
     return tao;
   }
 
-  template<class Ignore> static PetscErrorCode objective(Ignore, ::Vec u, T* energy, void* ctx) {
+  template<class Ignore> static PetscErrorCode objective(Ignore, ::Vec x, T* energy, void* ctx) {
     const Elastic& self = *(const Elastic*)ctx;
     HOLLOW_MONITOR_J(self.model.J_range = Box<T>::empty_box());
-    CHECK(IGAComputeScalarCustom(self.iga,u,1,energy,Elastic::energy,ctx,PETSC_TRUE));
+    CHECK(IGAComputeScalarCustom(self.iga,x,1,energy,Elastic::energy,ctx,PETSC_TRUE));
     if (!isfinite(*energy)) // Tao doesn't like infinite energies
       *energy = 1e10;
     HOLLOW_MONITOR_J(cout << "J_range = "<<self.model.J_range<<endl);
     if (self.rho_g == TV())
-      GEODE_ASSERT(*energy >= 0);
+      GEODE_ASSERT(*energy >= -1e-10);
     return PetscErrorCode(0);
   }
 
-  TV phi(IGAPoint p, const T* u_) const {
-    TV x;IGAPointFormGeomMap(p,x.data());
-    TV u;IGAPointFormValue(p,u_,u.data());
-    return warp.map(x)+u;
+  TV X(IGAPoint p, const T* x_) const {
+    TV X;
+    IGAPointFormValue(p,x_,X.data());
+    return X;
   }
 
-  Matrix<T,d> F(IGAPoint p, const T* u_) const {
-    TV x;IGAPointFormGeomMap(p,x.data());
-    Matrix<T,d> F;IGAPointFormGrad(p,u_,F.data());
-    return F+warp.F(x);
+  Matrix<T,d> F(IGAPoint p, const T* x_) const {
+    Matrix<T,d> F;
+    IGAPointFormGrad(p,x_,F.data());
+    return F;
   }
 
-  static PetscErrorCode energy(IGAPoint p, const T* u, const int n, T* energy, void* ctx) {
+  static PetscErrorCode energy(IGAPoint p, const T* x, const int n, T* energy, void* ctx) {
     assert(n==1);
     const Elastic& self = *(const Elastic*)ctx;
-    *energy = self.model.energy(self.F(p,u));
+    *energy = self.model.energy(self.F(p,x));
     if (self.rho_g != TV())
-      *energy -= dot(self.rho_g,self.phi(p,u));
+      *energy -= dot(self.rho_g,self.X(p,x));
     return 0;
   }
 
-  static PetscErrorCode residual(IGAPoint p, const T* u, T* b_, void* ctx) {
+  static PetscErrorCode residual(IGAPoint p, const T* x, T* b_, void* ctx) {
     const Elastic& self = *(const Elastic*)ctx;
     const int nen = p->nen;
     const T*  N0 = (decltype(N0))p->shape[0];
     const TV* N1 = (decltype(N1))p->shape[1];
-    const auto F = self.F(p,u);
+    const auto F = self.F(p,x);
     const auto rho_g = self.rho_g;
     const auto P = self.model.stress(F);
     TV* b = (TV*)b_;
@@ -128,12 +125,12 @@ public:
     return 0;
   }
 
-  static PetscErrorCode jacobian(IGAPoint p, const T* u, T* A_, void* ctx) {
+  static PetscErrorCode jacobian(IGAPoint p, const T* x, T* A_, void* ctx) {
     const Elastic& self = *(const Elastic*)ctx;
     const int nen = p->nen;
     const T*  N0 = (decltype(N0))p->shape[0];
     const TV* N1 = (decltype(N1))p->shape[1];
-    const auto F = self.F(p,u);
+    const auto F = self.F(p,x);
     TV* A = (decltype(A))A_;
     for (int a=0;a<nen;a++)
       for (int i=0;i<d;i++) {
@@ -145,36 +142,26 @@ public:
       }
     return 0;
   }
-
-  NdArray<const TV> map(NdArray<const TV> X) const {
-    NdArray<TV> Y(X.shape,false);
-    for (const int i : range(X.flat.size()))
-      Y.flat[i] = warp.map(X.flat[i]);
-    return Y;
-  }
 };
 
-template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<2>,NoWarp<2>>)
-template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<3>,NoWarp<3>>)
-template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<3>,BendWarp>)
+template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<2>>)
+template<> GEODE_DEFINE_TYPE(Elastic<NeoHookean<3>>)
 
 }
 }
 using namespace hollow;
 
-template<class Model,class Warp> static void wrap_helper(const char* name) {
-  typedef Elastic<Model,Warp> Self;
+template<class Model> static void wrap_helper(const char* name) {
+  typedef Elastic<Model> Self;
   typedef typename Self::T T;
   typedef typename Self::TV TV;
   Class<Self>(name)
-    .GEODE_INIT(MPI_Comm,RawArray<const T>,RawArray<const T>,TV)
+    .GEODE_INIT(MPI_Comm,RawArray<const T>,TV)
     .GEODE_METHOD(create_tao)
-    .GEODE_METHOD(map)
     ;
 }
 
 void wrap_elastic() {
-  wrap_helper<NeoHookean<2>,NoWarp<2>>("NeoHookeanElastic2d");
-  wrap_helper<NeoHookean<3>,NoWarp<3>>("NeoHookeanElastic3d");
-  wrap_helper<NeoHookean<3>,BendWarp>("NeoHookeanElasticBend");
+  wrap_helper<NeoHookean<2>>("NeoHookeanElastic2d");
+  wrap_helper<NeoHookean<3>>("NeoHookeanElastic3d");
 }

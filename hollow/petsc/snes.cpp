@@ -5,6 +5,7 @@
 #include <geode/python/Class.h>
 #include <geode/utility/const_cast.h>
 #include <geode/utility/Log.h>
+#include <geode/utility/interrupts.h>
 #include <geode/vector/relative_error.h>
 namespace hollow {
 
@@ -16,10 +17,13 @@ using std::endl;
 SNES::SNES(const MPI_Comm comm)
   : snes(0) {
   CHECK(SNESCreate(comm,&const_cast_(snes)));
+  add_monitor([](int,T){check_interrupts();});
 }
 
 SNES::SNES(const ::SNES snes)
-  : snes(snes) {}
+  : snes(snes) {
+  add_monitor([](int,T){check_interrupts();});
+}
 
 SNES::~SNES() {
   CHECK(SNESDestroy(&const_cast_(snes)));
