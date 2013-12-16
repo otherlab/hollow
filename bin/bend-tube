@@ -107,7 +107,6 @@ def solve(props):
   iga.set_fix_table(x)
 
   # Solve
-  print('x initial = %s\n%s'%(x.size/3,rint(100*x.local_copy().reshape(-1,3))))
   tao = iga.create_tao()
   iteration = [0]
   def monitor():
