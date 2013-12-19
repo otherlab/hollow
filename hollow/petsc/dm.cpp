@@ -53,8 +53,8 @@ Ref<DMPlex> DMPlex::clone() const {
   CHECK(DMClone(dm,&copy));
   // Share coordinates and coordinate section
   PetscSection s;
-  CHECK(DMPlexGetCoordinateSection(dm,&s));
-  CHECK(DMPlexSetCoordinateSection(copy,s));
+  CHECK(DMGetCoordinateSection(dm,&s));
+  CHECK(DMSetCoordinateSection(copy,s));
   ::Vec c;
   CHECK(DMGetCoordinatesLocal(dm,&c));
   CHECK(DMSetCoordinatesLocal(copy,c));
@@ -267,7 +267,7 @@ Tuple<Ref<DMPlex>,Array<const HalfedgeId>> dmplex_mesh(const MPI_Comm comm, cons
 
   // Set coordinates
   PetscSection Xs;
-  CHECK(DMPlexGetCoordinateSection(dm,&Xs));
+  CHECK(DMGetCoordinateSection(dm,&Xs));
   CHECK(PetscSectionSetChart(Xs,nf,nf+nv));
   for (const int v : nf+range(nv))
     CHECK(PetscSectionSetDof(Xs,v,X.n));
