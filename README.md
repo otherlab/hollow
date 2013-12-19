@@ -27,24 +27,26 @@ Installation of mayavi and mercurial (for petiga and igakit) varies with platfor
     sudo apt-get install mayavi2 mercurial
 
     # Homebrew (recommended for Mac)
+    brew install homebrew/science/vtk openmpi
     pip install mayavi mercurial
 
     # MacPorts (not recommended)
-    sudo port -v install mercurial
-    sudo pip install mayavi
+    sudo port -v install vtk5 +python27
+    sudo port -v install mercurial py27-mayavi
+    sudo ln -s /opt/local/bin/gfortran-mp-4.7 /opt/local/bin/gfortran # So that petsc and python find it
 
 Hollow depends on unreleased features of petsc, so a specific branch is required:
 
     # Download petsc
-    git clone git@bitbucket.org:petsc/petsc.git
+    git clone https://bitbucket.org/petsc/petsc.git
     cd petsc
 
     # Switch to the hollow branch
-    git checkout -b irving/hollow origin/irving/hollow
+    git checkout -b hollow origin/irving/hollow
 
     # Configure and build debug and release versions
-    ./configure --with-petsc-arch=debug   --with-debugging=1 --with-fortran=0
-    ./configure --with-petsc-arch=release --with-debugging=0 --with-fortran=0
+    ./configure --with-petsc-arch=debug   --with-debugging=1 --download-openmpi
+    ./configure --with-petsc-arch=release --with-debugging=0 --download-openmpi
     export PETSC_DIR=`pwd`
     make PETSC_ARCH=debug
     make PETSC_ARCH=release
@@ -52,7 +54,7 @@ Hollow depends on unreleased features of petsc, so a specific branch is required
 Download and build petiga and igakit:
 
     # Download petiga and igakit
-    hg clone https://bitbucket.org/dalcinl/petiga
+    git clone git@github.com:otherlab/petiga.git
     hg clone https://bitbucket.org/dalcinl/igakit
 
     # Build petiga (uses PETSC_DIR environment variable set above)
