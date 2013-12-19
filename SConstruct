@@ -667,7 +667,7 @@ def configure_mpi(env,mpi):
       mpi_include_options = ['/opt/local/include/openmpi','/usr/local/include/openmpi','/opt/local/include/mpi','/usr/local/include/mpi']
       for dir in mpi_include_options:
         if os.path.exists(os.path.join(dir,'mpi.h')):
-          mpi['cpppath'] = dir
+          mpi['cpppath'] = [dir]
           break
     if env['mpicc'] and not (mpi['cxxflags'] or mpi['linkflags'] or mpi['libs']):
       for flags,stage in ('linkflags','link'),('cxxflags','compile'):
