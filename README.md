@@ -27,13 +27,16 @@ Installation of mayavi and mercurial (for petiga and igakit) varies with platfor
     sudo apt-get install mayavi2 mercurial
 
     # Homebrew (recommended for Mac)
-    brew install homebrew/science/vtk openmpi
-    pip install mayavi mercurial
+    brew install homebrew/versions/vtk5 --with-qt
+    brew install openmpi freetype
+    pip install --upgrade mayavi mercurial python-dateutil matplotlib
 
     # MacPorts (not recommended)
     sudo port -v install vtk5 +python27
     sudo port -v install mercurial py27-mayavi
-    sudo ln -s /opt/local/bin/gfortran-mp-4.7 /opt/local/bin/gfortran # So that petsc and python find it
+    sudo ln -s /opt/local/bin/gfortran-mp-4.7 /opt/local/bin/gfortran # So that python can find it
+    sudo port -v install mpich-default
+    sudo port select --set mpich mpich-mp-fortran gcc48
 
 Hollow depends on unreleased features of petsc, so a specific branch is required:
 
@@ -44,9 +47,10 @@ Hollow depends on unreleased features of petsc, so a specific branch is required
     # Switch to the hollow branch
     git checkout -b hollow origin/irving/hollow
 
-    # Configure and build debug and release versions
-    ./configure --with-petsc-arch=debug   --with-debugging=1 --download-openmpi
-    ./configure --with-petsc-arch=release --with-debugging=0 --download-openmpi
+    # Configure and build debug and release versions.
+      # IMPORTANT: On MacPorts, add --with-mpi-dir=/opt/local
+    ./configure --with-petsc-arch=debug   --with-debugging=1
+    ./configure --with-petsc-arch=release --with-debugging=0
     export PETSC_DIR=`pwd`
     make PETSC_ARCH=debug
     make PETSC_ARCH=release
