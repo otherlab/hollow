@@ -56,6 +56,7 @@ def set_geometry(props,iga):
 
     # Create boundary condition field
     angle = pi/180*props.bend()
+    Log.write('bend radius = %g'%(length/angle))
     br = X[...,0]+length/angle
     bt = angle/length*X[...,2]
     B = empty_like(X)
