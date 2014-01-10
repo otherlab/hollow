@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup,find_packages,findall
+from setuptools import setup,find_packages
 
 setup(
   # Basics
@@ -14,5 +14,5 @@ setup(
   # Installation
   packages=find_packages(),
   package_data={'hollow':['*.py','*.so']},
-  scripts=findall('bin'),
+  scripts=['bin/bend-tube'],
 )
