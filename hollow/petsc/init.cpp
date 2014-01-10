@@ -25,6 +25,7 @@ void petsc_finalize() {
     TaoFinalize();
 #endif
     PetscFinalize();
+    MPI_Finalize();
   }
 }
 
@@ -39,6 +40,9 @@ static void dlopen_workaround() {
 void petsc_initialize(const string& help, const vector<string>& args) {
   GEODE_ASSERT(!petsc_initialized());
   dlopen_workaround();
+
+  // Initialize MPI with no arguments to avoid strange segfaults on Mac
+  CHECK(MPI_Init(0,0));
 
   int argc = int(args.size());
   Array<char*> pointers(argc,false);
