@@ -33,6 +33,9 @@ struct Comm : public Object {
   MPI_Comm comm;
 protected:
   Comm(MPI_Comm comm) : comm(comm) {}
+public:
+  int size() const { return comm_size(comm); }
+  int rank() const { return comm_rank(comm); }
 };
 GEODE_DEFINE_TYPE(Comm)
 }
@@ -54,5 +57,7 @@ using namespace hollow;
 void wrap_mpi() {
   typedef Comm Self;
   Class<Comm>("Comm")
+    .GEODE_GET(size)
+    .GEODE_GET(rank)
     ;
 }

@@ -33,38 +33,39 @@ def boundary_file(props):
   return os.path.join(props.output(),'boundary.vec')
 
 def set_geometry(props,iga):
-  import igakit.cad
-  import igakit.io
-
-  # Create geometry
-  length = props.length()
-  n = props.resolution()
-  tube = igakit.cad.grid(shape=n,degree=props.degree(),
-                         limits=((0,length),
-                                 (0,2*pi),
-                                 (0,props.thickness())))
-  tube.unclamp(1) # Make middle dimension periodic
-  X = tube.control[...,:3]
-  z,t,r = rollaxis(X,-1).copy()
-  r = props.radius()-r # [0,thick] -> [R-thick,R]
-  X[...,0] = r*cos(t)
-  X[...,1] = r*sin(t)
-  X[...,2] = z
-  Log.write('resolution = %s, X.shape = %s'%(n,X.shape))
-
-  # Create boundary condition field
-  angle = pi/180*props.bend()
-  br = X[...,0]+length/angle
-  bt = angle/length*X[...,2]
-  B = empty_like(X)
-  B[...,0] = br*cos(bt)
-  B[...,1] = X[...,1]
-  B[...,2] = br*sin(bt)
-
-  # Write
   geom = geometry_file(props)
-  igakit.io.PetIGA().write(geom,tube)
-  igakit.io.PetIGA().write_vec(boundary_file(props),B,nurbs=tube)
+  if not iga.comm.rank:
+    import igakit.cad
+    import igakit.io
+
+    # Create geometry
+    length = props.length()
+    n = props.resolution()
+    tube = igakit.cad.grid(shape=n,degree=props.degree(),
+                           limits=((0,length),
+                                   (0,2*pi),
+                                   (0,props.thickness())))
+    tube.unclamp(1) # Make middle dimension periodic
+    X = tube.control[...,:3]
+    z,t,r = rollaxis(X,-1).copy()
+    r = props.radius()-r # [0,thick] -> [R-thick,R]
+    X[...,0] = r*cos(t)
+    X[...,1] = r*sin(t)
+    X[...,2] = z
+    Log.write('resolution = %s, X.shape = %s'%(n,X.shape))
+
+    # Create boundary condition field
+    angle = pi/180*props.bend()
+    br = X[...,0]+length/angle
+    bt = angle/length*X[...,2]
+    B = empty_like(X)
+    B[...,0] = br*cos(bt)
+    B[...,1] = X[...,1]
+    B[...,2] = br*sin(bt)
+
+    # Write
+    igakit.io.PetIGA().write(geom,tube)
+    igakit.io.PetIGA().write_vec(boundary_file(props),B,nurbs=tube)
 
   # Read into the iga object
   iga.periodic = 0,1,0
@@ -72,20 +73,28 @@ def set_geometry(props,iga):
 
 def solve(props):
   output = props.output()
-  if not os.path.exists(output):
+  try:
     os.makedirs(output)
-  Log.cache_initial_output()
-  Log.configure('bent tube',0,0,100)
-  Log.copy_to_file(output+'/log',False)
-  Log.write('command = %s'%parser.command(props))
+  except OSError:
+    pass
+  assert os.path.isdir(output)
 
   petsc_initialize('Bent tube',[sys.argv[0]]+('''
     -tao_monitor -tao_converged_reason -tao_type tao_nls -tao_nls_ksp_type cg
     -tao_max_it 200 -ksp_max_it 200
     -iga_view -ksp_converged_reason -info %s/info
     '''%output).split())
-  petsc_add_options([sys.argv[0]]+props.petsc().split())
+
   comm = petsc_comm_world()
+  if comm.rank:
+    Log.configure('bent tube',1,1,0)
+  else:
+    Log.cache_initial_output()
+    Log.configure('bent tube',0,0,100)
+    Log.copy_to_file(output+'/log',False)
+    Log.write('command = %s'%parser.command(props))
+
+  petsc_add_options([sys.argv[0]]+props.petsc().split())
   d = 3
   material = props.youngs_modulus(),props.poissons_ratio()
   rho_g = 0
