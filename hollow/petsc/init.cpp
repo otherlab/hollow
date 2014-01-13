@@ -25,7 +25,15 @@ void petsc_finalize() {
     TaoFinalize();
 #endif
     PetscFinalize();
-    MPI_Finalize();
+  }
+  // Close down MPI
+  int init;
+  CHECK(MPI_Initialized(&init));
+  if (init) {
+    int final;
+    CHECK(MPI_Finalized(&final));
+    if (!final)
+      MPI_Finalize();
   }
 }
 
