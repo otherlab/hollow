@@ -91,7 +91,7 @@ T Vec::max() const {
 }
 
 void Vec::set_random(const uint128_t key, const T slo, const T shi) {
-  static_assert(boost::is_same<S,double>::value,"PetscScalar must be double for now");
+  static_assert(is_same<S,double>::value,"PetscScalar must be double for now");
   const T scale = (shi-slo)*pow(2.,-64.);
   int lo,hi;
   CHECK(VecGetOwnershipRange(v,&lo,&hi));
