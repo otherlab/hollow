@@ -14,5 +14,5 @@ setup(
   # Installation
   packages=find_packages(),
   package_data={'hollow':['*.py','*.so']},
-  scripts=['bin/bend-tube'],
+  scripts='bin/bend-tube bin/hollow-view'.split(),
 )

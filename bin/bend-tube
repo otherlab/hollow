@@ -12,16 +12,12 @@ def make_props(**kwargs):
   props.add('youngs_modulus',1e4)
   props.add('poissons_ratio',.45)
   props.add('density',1000.)
-  props.add('view',False)
   props.add('resolution',(50,10,1)).set_help('resolution along, around, and across (length, circle, thickness)')
   props.add('bend',180.).set_help('tube bend angle in degrees')
   props.add('length',5.).set_help('tube length')
   props.add('radius',1.).set_help('tube outer radius')
   props.add('thickness',.1).set_help('tube thickness')
   props.add('degree',2).set_help('nurbs geometry degree')
-  props.add('frame',10000).set_help('frame to view')
-  props.add('color','strain').set_allowed('none strain'.split()).set_help('color mode')
-  props.add('wire',1).set_help('wireframeness: 0 for none, 1 for some, 2 for a lot')
   for k,v in kwargs.items():
     props.get(k).set(v)
   return props
@@ -133,67 +129,7 @@ def solve(props):
   tao.set_initial_vector(x)
   tao.solve()
 
-def view(props):
-  from igakit.io import PetIGA
-  from igakit.nurbs import NURBS
-  from igakit.plot import plt
-
-  # Initialize
-  output = props.output()
-  frame = min(props.frame(),int(open(os.path.join(output,'last_frame')).read()))
-  print('frame = %d'%frame)
-
-  # Read geometry
-  d = 3
-  geom = PetIGA().read(geometry_file(props))
-  print('geom.control.shape = %s'%(geom.control.shape,))
-  assert geom.dim==d
-
-  # Optionally replace geometry with solution
-  if frame>=0:
-    x = PetIGA().read_vec(os.path.join(output,'x.%d'%frame),nurbs=geom)
-    print('x shape = %s'%(x.shape,))
-    deformed = NURBS(knots=geom.knots,control=x)
-
-  # Visualize
-  plt.figure()
-  if props.wire()>0:
-    plt.kwire(deformed)
-  if props.wire()>1:
-    plt.cwire(deformed)
-  if props.color()=='none':
-    plt.surface(deformed)
-  elif props.color()=='strain':
-    # Evaluate strain everywhere in the volume, then set as a field for extraction purposes
-    F = geom.gradient(fields=x,mapped=True)
-    strain = maxmag(fast_singular_values(F)-1)
-    strain_lo,strain_hi = strain.min(),strain.max()
-    print('strain range: %g %g'%(strain_lo,strain_hi))
-    strained = NURBS(knots=deformed.knots,control=deformed.control,fields=strain)
-
-    # Modified from igakit.plot.Plotter.surface
-    n = plt.backend._resolution[2]
-    for nrb in surfaces(strained):
-      u = [linspace(U[p],U[-p-1],n) for p,U in zip(nrb.degree,nrb.knots)]
-      pos,strain = nrb(*u,fields=True)
-      from mayavi import mlab
-      m = mlab.mesh(*rollaxis(pos,-1),scalars=strain[...,0])
-      m.module_manager.scalar_lut_manager.data_range = [strain_lo,strain_hi]
-      m.module_manager.scalar_lut_manager.show_scalar_bar = True
-  plt.show()
-
-def surfaces(nurbs):
-  assert nurbs.dim in (2,3)
-  if nurbs.dim==2:
-    return [nurbs]
-  elif nurbs.dim==3:
-    return [nurbs.boundary(axis,side) for axis in range(3) for side in range(2)]
-
 if __name__=='__main__':
   props = make_props()
   parser.parse(props,'Bent tube')
-  if props.view():
-    print('command = %s'%parser.command(props))
-    view(props)
-  else:
-    solve(props)
+  solve(props)
