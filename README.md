@@ -24,7 +24,7 @@ Install geode and its dependencies via the instructions at https://github.com/ot
 Installation of mayavi and mercurial (for petiga and igakit) varies with platform:
 
     # Debian/Ubuntu
-    sudo apt-get install mayavi2 mercurial
+    sudo apt-get install mayavi2 mercurial flex gfortran openmpi-bin libopenmpi-dev
 
     # Homebrew (recommended for Mac)
     brew install homebrew/versions/vtk5 --with-qt
@@ -48,12 +48,13 @@ Hollow depends on unreleased features of petsc, so a specific branch is required
     git checkout -b hollow origin/irving/hollow
 
     # Configure and build debug and release versions.
-      # IMPORTANT: On MacPorts, add --with-mpi-dir=/opt/local
+    # IMPORTANT: On MacPorts, add --with-mpi-dir=/opt/local
     ./configure --with-petsc-arch=debug   --with-debugging=1
     ./configure --with-petsc-arch=release --with-debugging=0
     export PETSC_DIR=`pwd`
     make PETSC_ARCH=debug
     make PETSC_ARCH=release
+    cd ..
 
 Download and build petiga and igakit:
 
