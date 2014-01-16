@@ -12,7 +12,8 @@ def make_props(**kwargs):
   props.add('youngs_modulus',1e4)
   props.add('poissons_ratio',.45)
   props.add('density',1000.)
-  props.add('resolution',(50,10,1)).set_help('resolution along, around, and across (length, circle, thickness)')
+  props.add_existing(Prop('resolution',(50,10,1),shape=(-1,))
+    .set_help('resolution along, around, and across (length, circle, thickness)'))
   props.add('bend',180.).set_help('tube bend angle in degrees')
   props.add('length',5.).set_help('tube length')
   props.add('radius',1.).set_help('tube outer radius')
@@ -37,6 +38,9 @@ def set_geometry(props,iga):
     # Create geometry
     length = props.length()
     n = props.resolution()
+    assert len(n) in (1,3)
+    if len(n)==1:
+      n = ceil(array([length,2*pi*props.radius(),props.thickness()])/length*n[0]).astype(int)
     tube = igakit.cad.grid(shape=n,degree=props.degree(),
                            limits=((0,length),
                                    (0,2*pi),
@@ -77,7 +81,8 @@ def solve(props):
   assert os.path.isdir(output)
 
   petsc_initialize('Bent tube',[sys.argv[0]]+('''
-    -tao_monitor -tao_converged_reason -tao_type tao_nls -tao_nls_ksp_type cg
+    -tao_monitor -tao_converged_reason -tao_type tao_nls
+    -tao_nls_ksp_type petsc -ksp_type minres
     -tao_max_it 200 -ksp_max_it 200
     -iga_view -ksp_converged_reason -info %s/info
     '''%output).split())
