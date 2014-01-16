@@ -16,9 +16,12 @@ def make_props(**kwargs):
     .set_help('resolution along, around, and across (length, circle, thickness)'))
   props.add('bend',180.).set_help('tube bend angle in degrees')
   props.add('length',5.).set_help('tube length')
+  props.add('bend_radius',-1.).set_help('bending radius (defaults to length/angle)')
+  props.add('rest_bend_radius',inf).set_help('rest bending radius of tube')
   props.add('radius',1.).set_help('tube outer radius')
   props.add('thickness',.1).set_help('tube thickness')
   props.add('degree',2).set_help('nurbs geometry degree')
+  props.add('deform',True).set_help('set to false to see rest geometry')
   for k,v in kwargs.items():
     props.get(k).set(v)
   return props
@@ -28,6 +31,19 @@ def geometry_file(props):
 
 def boundary_file(props):
   return os.path.join(props.output(),'boundary.vec')
+
+def large_bend(X,radius,extra=0):
+  if not isfinite(radius):
+    return X
+  br = X[...,0]+radius
+  z = X[...,2]
+  bt = (z-extra/2)/radius
+  B = empty_like(X)
+  B[...,0] = br*cos(clamp(bt,0,pi))
+  B[...,1] = X[...,1]
+  a = abs(bt-pi/2)<pi/2
+  B[...,2] = a*br*sin(bt)-(1-a)*radius*(abs(bt-pi/2)-pi/2)
+  return B
 
 def set_geometry(props,iga):
   geom = geometry_file(props)
@@ -52,17 +68,28 @@ def set_geometry(props,iga):
     X[...,0] = r*cos(t)
     X[...,1] = r*sin(t)
     X[...,2] = z
+    base = X.copy()
+    X[:] = large_bend(base,props.rest_bend_radius())
     Log.write('resolution = %s, X.shape = %s'%(n,X.shape))
 
+    def esin(t):
+      a = t<0
+      b = t>pi
+      return a*t+(1-a-b)*sin(t)+b*(pi-t)
+
     # Create boundary condition field
-    angle = pi/180*props.bend()
-    Log.write('bend radius = %g'%(length/angle))
-    br = X[...,0]+length/angle
-    bt = angle/length*X[...,2]
-    B = empty_like(X)
-    B[...,0] = br*cos(bt)
-    B[...,1] = X[...,1]
-    B[...,2] = br*sin(bt)
+    if props.deform():
+      angle = pi/180*props.bend()
+      bend_radius = props.bend_radius()
+      if bend_radius < 0:
+        bend_radius = length/angle
+      Log.write('bend radius = %g (base %g)'%(bend_radius,length/angle))
+      extra = length-angle*bend_radius
+      Log.write('extra length = %g'%extra)
+      assert extra>=-1e-4
+      B = large_bend(base,bend_radius,extra)
+    else:
+      B = X
 
     # Write
     igakit.io.PetIGA().write(geom,tube)
