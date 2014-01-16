@@ -3,15 +3,19 @@
 from __future__ import division,print_function,absolute_import
 from hollow import *
 from geode import *
+from geode.geometry.platonic import *
 import sys
 
 def make_props(**kwargs):
   props = PropManager()
   props.add('dir','').set_abbrev('d').set_required(1)
-  props.add('frame',10000).set_help('frame to view')
-  props.add('color','strain').set_allowed('none strain'.split()).set_help('color mode')
+  props.add('frame',0.).set(10000).set_help('frame to view')
+  props.add('color','strain').set_allowed('none strain strain-lo strain-hi'.split()).set_help('color mode')
   props.add('wire',1).set_help('wireframeness: 0 for none, 1 for some, 2 for a lot')
   props.add('resolution',3).set_abbrev('n').set_help('ticks per basis function')
+  props.add('view',Frame.identity(3))
+  props.add('mode','mayavi').set_allowed('mayavi gui'.split())
+  props.add('strain_range',zeros(2))
   for k,v in kwargs.items():
     props.get(k).set(v)
   return props
@@ -22,11 +26,10 @@ def geometry_file(props):
 def view(props):
   from igakit.io import PetIGA
   from igakit.nurbs import NURBS
-  from igakit.plot import plt
 
   # Initialize
   dir = props.dir()
-  frame = min(props.frame(),int(open(os.path.join(dir,'last_frame')).read()))
+  frame = min(int(props.frame()),int(open(os.path.join(dir,'last_frame')).read()))
   print('frame = %d'%frame)
 
   # Read geometry
@@ -41,20 +44,36 @@ def view(props):
     print('x shape = %s'%(x.shape,))
     deformed = NURBS(knots=geom.knots,control=x)
 
+  # Launch gui if desired
+  mode = props.mode()
+  if mode=='gui':
+    import gui
+    app = gui.QEApp(sys.argv,True)
+    main = gui.MainWindow(props)
+    main.view.cam.frame = props.view()
+
   # Visualize
-  plt.figure()
-  if props.wire()>0:
-    plt.kwire(deformed)
-  if props.wire()>1:
-    plt.cwire(deformed)
-  if props.color()=='none':
-    plt.surface(deformed)
-  elif props.color()=='strain':
+  color = props.color()
+  if mode=='mayavi':
+    from igakit.plot import plt
+    plt.figure()
+    if props.wire()>0:
+      plt.kwire(deformed)
+    if props.wire()>1:
+      plt.cwire(deformed)
+    if color=='none':
+      plt.surface(deformed)
+  if color.startswith('strain'):
     # Evaluate strain everywhere in the volume, then set as a field for extraction purposes
     F = geom.gradient(fields=x,mapped=True)
-    strain = maxmag(fast_singular_values(F)-1)
+    strain = fast_singular_values(F)-1
+    strain = {'strain':maxmag(strain),'strain-lo':strain.min(axis=-1),'strain-hi':strain.max(axis=-1)}[color]
     strain_lo,strain_hi = strain.min(),strain.max()
     print('strain range: %g %g'%(strain_lo,strain_hi))
+    if any(props.strain_range()):
+      lo,hi = props.strain_range()
+      assert min(lo,hi)<=strain_lo<=strain_hi<=max(lo,hi)
+      strain_lo,strain_hi = lo,hi
     strained = NURBS(knots=deformed.knots,control=deformed.control,fields=strain)
 
     t = linspace(0,1,num=props.resolution(),endpoint=0)
@@ -62,14 +81,47 @@ def view(props):
       y = x[:,None]
       return concatenate([((1-t)*y[:-1]+t*y[1:]).ravel(),x[-1:]])
 
-    for nrb in surfaces(strained):
+    for i,nrb in enumerate(surfaces(strained)):
       u = [subdivide(U[p:-p]) for p,U in zip(nrb.degree,nrb.knots)]
       pos,strain = nrb(*u,fields=True)
-      from mayavi import mlab
-      m = mlab.mesh(*rollaxis(pos,-1),scalars=strain[...,0])
-      m.module_manager.scalar_lut_manager.data_range = [strain_lo,strain_hi]
-      m.module_manager.scalar_lut_manager.show_scalar_bar = True
-  plt.show()
+      if mode=='gui':
+        class SurfaceScene(gui.Scene):
+          def __init__(self,X,color):
+            print('X.shape %s, color.shape %s'%(X.shape,color.shape))
+            self.top = grid_topology(*(array(X.shape[:-1])-1))
+            self.color = color.reshape(-1,3)
+            self.X = X.reshape(-1,3)
+          def bounding_box(self):
+            return bounding_box(self.X)
+          def render(self,*args):
+            from OpenGL import GL
+            tris = self.top.elements
+            GL.glBegin(GL.GL_TRIANGLES)
+            gui.gl_colored_vertices(self.color[tris],self.X[tris])
+            GL.glEnd()
+        print('adding scene %d'%i)
+        color = (strain-strain_lo)/(strain_hi-strain_lo)
+        color = wheel_color(2*color/3)
+        main.view.add_scene('surface-%d'%i,SurfaceScene(pos,color))
+      elif mode=='mayavi':
+        from mayavi import mlab
+        m = mlab.mesh(*rollaxis(pos,-1),scalars=strain[...,0])
+        m.module_manager.scalar_lut_manager.data_range = [strain_lo,strain_hi]
+        m.module_manager.scalar_lut_manager.show_scalar_bar = True
+      else:
+        raise RuntimeError('bad mode %s'%mode)
+
+  if mode=='gui':
+    def show_view():
+      print('view = %s'%','.join(map(str,main.view.cam.frame.reals())))
+    main.add_menu_item('Camera','Show view',show_view,'')
+    main.init()
+    main.view.show_all(1)
+    app.run()
+  elif mode=='mayavi':
+    plt.show()
+  else:
+    raise RuntimeError('bad mode %s'%mode)
 
 def surfaces(nurbs):
   assert nurbs.dim in (2,3)
