@@ -11,6 +11,7 @@ def make_props(**kwargs):
   props.add('frame',10000).set_help('frame to view')
   props.add('color','strain').set_allowed('none strain'.split()).set_help('color mode')
   props.add('wire',1).set_help('wireframeness: 0 for none, 1 for some, 2 for a lot')
+  props.add('resolution',3).set_abbrev('n').set_help('ticks per basis function')
   for k,v in kwargs.items():
     props.get(k).set(v)
   return props
@@ -56,10 +57,13 @@ def view(props):
     print('strain range: %g %g'%(strain_lo,strain_hi))
     strained = NURBS(knots=deformed.knots,control=deformed.control,fields=strain)
 
-    # Modified from igakit.plot.Plotter.surface
-    n = plt.backend._resolution[2]
+    t = linspace(0,1,num=props.resolution(),endpoint=0)
+    def subdivide(x):
+      y = x[:,None]
+      return concatenate([((1-t)*y[:-1]+t*y[1:]).ravel(),x[-1:]])
+
     for nrb in surfaces(strained):
-      u = [linspace(U[p],U[-p-1],n) for p,U in zip(nrb.degree,nrb.knots)]
+      u = [subdivide(U[p:-p]) for p,U in zip(nrb.degree,nrb.knots)]
       pos,strain = nrb(*u,fields=True)
       from mayavi import mlab
       m = mlab.mesh(*rollaxis(pos,-1),scalars=strain[...,0])
