@@ -11,7 +11,7 @@ def make_props(**kwargs):
   props.add('dir','').set_abbrev('d').set_required(1)
   props.add('frame',0.).set(10000).set_help('frame to view')
   props.add('color','strain').set_allowed('none strain strain-lo strain-hi'.split()).set_help('color mode')
-  props.add('wire',1).set_help('wireframeness: 0 for none, 1 for some, 2 for a lot')
+  props.add('wire',0).set_help('wireframeness: 0 for none, 1 for some, 2 for a lot')
   props.add('resolution',3).set_abbrev('n').set_help('ticks per basis function')
   props.add('view',Frame.identity(3))
   props.add('mode','mayavi').set_allowed('mayavi gui'.split())
@@ -56,7 +56,8 @@ def view(props):
   color = props.color()
   if mode=='mayavi':
     from igakit.plot import plt
-    plt.figure()
+    fig = plt.figure()
+    fig.name = os.path.abspath(dir).replace(os.environ['HOME']+'/','')
     if props.wire()>0:
       plt.kwire(deformed)
     if props.wire()>1:
