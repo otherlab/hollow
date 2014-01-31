@@ -2,6 +2,7 @@
 
 // Must be included first
 #include <geode/utility/config.h>
+#include <geode/python/forward.h>
 #include <petscsys.h>
 namespace hollow {
 
@@ -20,4 +21,6 @@ HOLLOW_EXPORT void GEODE_NORETURN(check_failed(const int line, const char* funct
     ::hollow::check_failed(__LINE__,__FUNCTION__,__FILE__,#call,_n); \
   })
 
+} namespace geode {
+GEODE_DECLARE_ENUM(InsertMode,HOLLOW_EXPORT)
 }

@@ -1,5 +1,6 @@
 #include <hollow/petsc/config.h>
 #include <hollow/petsc/mpi.h>
+#include <geode/python/enum.h>
 #include <geode/utility/debug.h>
 #include <geode/utility/format.h>
 #include <geode/utility/Log.h>
@@ -33,4 +34,19 @@ void check_failed(const int line, const char* function, const char* file, const 
   GEODE_FATAL_ERROR();
 }
 
+} namespace geode {
+GEODE_DEFINE_ENUM(InsertMode,HOLLOW_EXPORT)
+}
+using namespace hollow;
+
+void wrap_petsc_config() {
+  GEODE_ENUM(InsertMode)
+  GEODE_ENUM_VALUE(NOT_SET_VALUES)
+  GEODE_ENUM_VALUE(INSERT_VALUES)
+  GEODE_ENUM_VALUE(ADD_VALUES)
+  GEODE_ENUM_VALUE(MAX_VALUES)
+  GEODE_ENUM_VALUE(INSERT_ALL_VALUES)
+  GEODE_ENUM_VALUE(ADD_ALL_VALUES)
+  GEODE_ENUM_VALUE(INSERT_BC_VALUES)
+  GEODE_ENUM_VALUE(ADD_BC_VALUES)
 }

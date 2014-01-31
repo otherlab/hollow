@@ -29,4 +29,7 @@ HOLLOW_EXPORT void petsc_finalize();
 // Reset petsc options to the given list.  Any petsc objects already allocated will not change.
 HOLLOW_EXPORT void petsc_set_options(const vector<string>& args);
 
+// Add new petsc options without removing old options.  Like argv[0], the first option is ignored.
+HOLLOW_EXPORT void petsc_add_options(const vector<string>& args);
+
 }

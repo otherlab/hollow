@@ -127,7 +127,7 @@ def solve(props):
   d = 3
   material = props.youngs_modulus(),props.poissons_ratio()
   rho_g = 0
-  iga = NeoHookeanElastic[d](comm,material,rho_g)
+  iga = NeoHookeanElasticIGA[d](comm,material,rho_g)
 
   # Create geometry
   set_geometry(props,iga)

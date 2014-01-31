@@ -42,17 +42,13 @@ def create_mesh(props,comm):
 
   # Dump mesh information
   if props.dump_mesh():
-    print('mesh dump:')
+    print('mesh dump: counts %s'%dm.counts)
     for v in mesh.vertices():
       print('  v %d = %s'%(v,X[v]))
     for i,e in enumerate(edges):
       s = mesh.src(e)
       d = mesh.dst(e)
       print('  e %d = %s (%d %d)'%(i,(X[s]+X[d])/2,s,d))
-
-  # Print some information
-  counts = asarray([mesh.n_vertices,mesh.n_edges,mesh.n_faces])
-  assert all(counts==dm.counts)
   return dm
 
 def laplace_test(props):
@@ -81,7 +77,8 @@ def laplace_test(props):
     fe_aux = FE(comm,dim,1,"mat_",fe[0].qorder()),
     print('fe aux dofs = %s'%fe_aux[0].dofs)
   model = LaplaceTest2d(fe,fe_aux,fe_bd,neumann)
-  dm.set_model(model)
+  dm.set_model(model,True)
+  assert snes.has_objective() # Make sure energy shows up as the objective
 
   # Sections and fields
   counts = dm.mark_boundary('boundary')
@@ -110,6 +107,12 @@ def laplace_test(props):
   # Configure snes
   snes.set_from_options()
 
+  # Check snes at random vector
+  random.seed(183121)
+  u.set_local(random.randn(u.local_size))
+  print('u local = %s'%u.local_copy())
+  snes.consistency_test(u,1e-6,1e-5,1e-10,10)
+
   # Solve
   u.set(0)
   snes.solve(None,u)
@@ -133,6 +136,12 @@ def laplace_test(props):
   if 0 and u.local_size<100:
     print('u = %s'%repr(list(u.local_copy())))
   return u,error
+
+def test_dirichlet_tiny():
+  props = make_props(bc='dirichlet',order=1,resolution=1)
+  u,e = laplace_test(props)
+  assert allclose(e,4/9)
+  assert allclose(u.local_copy(),[])
 
 def test_dirichlet_linear():
   props = make_props(bc='dirichlet',order=1,resolution=2)

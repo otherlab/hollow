@@ -122,7 +122,7 @@ void DMPlex::distribute(const string& partitioner) {
   set_dm(dm,dist);
 }
 
-Vector<int,2> DMPlex::mark_boundary(const string& label) {
+static DMLabel create_label(::DM dm, const string& label) {
   PetscBool has;
   CHECK(DMPlexHasLabel(dm,label.c_str(),&has));
   if (has)
@@ -130,12 +130,27 @@ Vector<int,2> DMPlex::mark_boundary(const string& label) {
   CHECK(DMPlexCreateLabel(dm,label.c_str()));
   DMLabel L;
   CHECK(DMPlexGetLabel(dm,label.c_str(),&L));
-  CHECK(DMPlexMarkBoundaryFaces(dm,L));
+  return L;
+}
+static Vector<int,2> complete_label(::DM dm, DMLabel L) {
   Vector<int,2> counts;
   CHECK(DMLabelGetStratumSize(L,1,&counts.x));
   CHECK(DMPlexLabelComplete(dm,L));
   CHECK(DMLabelGetStratumSize(L,1,&counts.y));
   return counts;
+}
+
+Vector<int,2> DMPlex::mark_boundary(const string& label) {
+  const auto L = create_label(dm,label);
+  CHECK(DMPlexMarkBoundaryFaces(dm,L));
+  return complete_label(dm,L);
+}
+
+Vector<int,2> DMPlex::mark(const string& label, RawArray<const int> indices) {
+  const auto L = create_label(dm,label);
+  for (const auto i : indices)
+    CHECK(DMLabelSetValue(L,i,1));
+  return complete_label(dm,L);
 }
 
 void DMPlex::create_default_section(const vector<string>& names, const vector<Ref<const FE>>& fes,
@@ -187,10 +202,42 @@ void DMPlex::create_default_section(const vector<string>& names, const vector<Re
     CHECK(ISDestroy(&boundaries[0]));
 }
 
-void DMPlex::set_model(const Model& model) {
+void DMPlex::set_model(const Model& model, const bool use_energy) {
   this->model = ref(model);
   CHECK(DMSNESSetFunctionLocal(dm,DMPlexComputeResidualFEM,(void*)&model.fem));
   CHECK(DMSNESSetJacobianLocal(dm,DMPlexComputeJacobianFEM,(void*)&model.fem));
+  if (use_energy)
+    CHECK(DMSNESSetObjective(dm,[](SNES snes, ::Vec X, T* energy, void* ctx) {
+      const DMPlex& self = *(const DMPlex*)ctx;
+      const Model& model = *self.model;
+      PetscQuadrature quad, quad_bd;
+      if (model.e) {
+        GEODE_ASSERT(model.fe.size()==1,"Energy computation is only implemented for a single finite element field");
+        CHECK(PetscFEGetQuadrature(model.fep[0],&quad));
+      }
+      if (model.eb) {
+        GEODE_ASSERT(model.fe_bd.size()==1,"Energy computation is only implemented for a single boundary finite element field");
+        CHECK(PetscFEGetQuadrature(model.fep_bd[0],&quad_bd));
+      }
+      CHECK(DMPlexComputeScalarsFEM(self.dm,1,quad,model.e,quad_bd,model.eb,X,energy,&const_cast_(model.fem)));
+      if (!isfinite(*energy)) // Replace inf with large numbers to avoid problems with Tao
+        *energy = 1e10;
+      return PetscErrorCode(0);
+    },this));
+}
+
+void DMPlex::project(const vector<Ref<const Analytic>> fs, InsertMode mode, Vec& x) const {
+  GEODE_ASSERT(model,"Can't project without a model");
+  GEODE_ASSERT(model->fe.size()==fs.size());
+  Array<void(*)(const T*,S*,void*)> fps(int(fs.size()),false);
+  Array<void*> ctxs(int(fs.size()),false);
+  for (const int i : range(int(fs.size()))) {
+    GEODE_ASSERT(fs[i]->dim==model->dim);
+    GEODE_ASSERT(fs[i]->count==model->fe[i]->components());
+    fps[i] = fs[i]->f;
+    ctxs[i] = fs[i]->ctx;
+  }
+  CHECK(DMPlexProjectFunction(dm,model->fep.data(),fps.data(),ctxs.data(),mode,x.v));
 }
 
 T DMPlex::L2_error_vs_exact(const Vec& v) const {
@@ -200,6 +247,36 @@ T DMPlex::L2_error_vs_exact(const Vec& v) const {
   T error;
   CHECK(DMPlexComputeL2Diff(dm,model->fep.data(),model->exact.data(),model->exact_contexts.data(),v.v,&error));
   return error;
+}
+
+void DMPlex::write_vtk(const string& filename, const Vec& v) const {
+  GEODE_ASSERT(model,"Need a model in order to enforce boundary conditions");
+
+  // Make a VTK viewer
+  PetscViewer viewer;
+  CHECK(PetscViewerCreate(comm(),&viewer));
+  CHECK(PetscViewerSetType(viewer,PETSCVIEWERVTK));
+  CHECK(PetscViewerSetFormat(viewer,PETSC_VIEWER_ASCII_VTK));
+  CHECK(PetscViewerFileSetName(viewer,filename.c_str()));
+
+  // Grab local vector and update name
+  ::Vec local;
+  const char *name;
+  CHECK(DMGetLocalVector(dm,&local));
+  CHECK(PetscObjectGetName((PetscObject)v.v,&name));
+  CHECK(PetscObjectSetName((PetscObject)local,name));
+
+  // Apply boundary conditions
+  CHECK(DMGlobalToLocalBegin(dm,v.v,INSERT_VALUES,local));
+  CHECK(DMGlobalToLocalEnd(dm,v.v,INSERT_VALUES,local));
+  CHECK(DMPlexProjectFunctionLocal(dm,model->fep.data(),model->fem.bcFuncs,model->fem.bcCtxs,INSERT_BC_VALUES,local));
+
+  // Write everything to disk
+  CHECK(VecView(local,viewer));
+
+  // Clean up
+  CHECK(DMRestoreLocalVector(dm,&local));
+  CHECK(PetscViewerDestroy(&viewer));
 }
 
 Ref<DMPlex> dmplex_unit_box(const MPI_Comm comm, const int dim) {
@@ -286,8 +363,12 @@ Tuple<Ref<DMPlex>,Array<const HalfedgeId>> dmplex_mesh(const MPI_Comm comm, cons
   CHECK(DMSetCoordinatesLocal(dm,Xv));
   CHECK(VecDestroy(&Xv));
 
+  // Check counts
+  const auto result = new_<DMPlex>(dm);
+  GEODE_ASSERT(asarray(vec(mesh.n_vertices(),mesh.n_edges(),mesh.n_faces()))==result->counts());
+
   // All done!
-  return tuple(new_<DMPlex>(dm),edges.const_());
+  return tuple(result,edges.const_());
 }
 
 }
@@ -313,9 +394,12 @@ void wrap_dm() {
       .GEODE_METHOD(uniform_refine)
       .GEODE_METHOD(distribute)
       .GEODE_METHOD(mark_boundary)
+      .GEODE_METHOD(mark)
       .GEODE_METHOD(create_default_section)
       .GEODE_METHOD(set_model)
+      .GEODE_METHOD(project)
       .GEODE_METHOD(L2_error_vs_exact)
+      .GEODE_METHOD(write_vtk)
       ;
   }
 

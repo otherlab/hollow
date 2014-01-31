@@ -24,4 +24,6 @@ public:
   void set_constant_nullspace();
 };
 
+HOLLOW_EXPORT Array<PetscScalar,2> dense_copy(::Mat A);
+
 }

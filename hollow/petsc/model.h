@@ -31,6 +31,8 @@ public:
   typedef void(*Boundary)(FE_ARGS, const T n[], T result[]);
   typedef void(*Exact)(const T x[], T* u, void* ctx);
 
+  Interior e; // Interior energy
+  Boundary eb; // Boundary energy
   const Array<Interior> f0, f1; // Interior fields to dot with v and dv
   const Array<Boundary> b0, b1; // Boundary fields to dot with v and dv along the boundary
   const Array<Interior,2> g0, g1, g2, g3; // Unknown

@@ -21,6 +21,8 @@ protected:
 public:
   ~SNES();
 
+  MPI_Comm comm() const;
+
   void set_from_options();
 
   void set_dm(const DM& dm);

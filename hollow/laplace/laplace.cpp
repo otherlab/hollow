@@ -64,6 +64,9 @@ protected:
       GEODE_ASSERT(sqr_magnitude(box.normal(xv)-nv)<1e-10, \
         format("bad normal: x %s, n %s (expected %s)",str(xv),str(nv),str(box.normal(xv)))); \
       })
+    e = [](FE_ARGS, T* e) { CHECK_X(); *e = 4*u[0]+.5*sqr_magnitude(RawArray<const T>(d,du)); };
+    if (neumann)
+      eb = [](FE_ARGS, const T n[], T* e) { CHECK_N(); *e = abs(x[0]-1)<1e-5 || abs(x[1]-1)<1e-5 ? -2*u[0] : 0; };
     f0[0] = [](FE_ARGS, T f0[]) { CHECK_X(); f0[0] = 4; };
     b0[0] = neumann ? [](FE_ARGS, const T n[], T f0[]) { CHECK_N(); f0[0] = abs(x[0]-1)<1e-5 || abs(x[1]-1)<1e-5 ? -2 : 0; }
                     : [](FE_ARGS, const T n[], T f0[]) { CHECK_N(); f0[0] = 0; };

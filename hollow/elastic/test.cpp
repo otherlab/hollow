@@ -1,5 +1,6 @@
 // Unit tests for constitutive models
 
+#include <hollow/elastic/laplace.h>
 #include <hollow/elastic/neo_hookean.h>
 #include <geode/python/wrap.h>
 #include <geode/random/Random.h>
@@ -39,14 +40,28 @@ template<class Model> static inline void constitutive_model_test(const Model mod
       const T error = relative_error(Up-Um,2*inner_product(P,dF));
       //cout << "stress error = "<<error<<endl;
       GEODE_ASSERT(error<1e-6);
-    } {
+    }
+    const auto dP = model.differential(F,dF);
+    {
       // Check stress vs. differential
       const auto Pp = model.stress(F+dF),
-                 Pm = model.stress(F-dF),
-                 dP = model.differential(F,dF);
+                 Pm = model.stress(F-dF);
       const T error = relative_error(Pp-Pm,T(2)*dP);
       //cout << "differential error = "<<error<<endl;
       GEODE_ASSERT(error<1e-6);
+    } {
+      // Check stress differential vs. derivative
+      T DP[d*d*d*d];
+      model.derivative(DP,F);
+      Matrix<T,d> A;
+      for (int i=0;i<d;i++)
+        for (int j=0;j<d;j++)
+          for (int k=0;k<d;k++)
+            for (int l=0;l<d;l++)
+              A(i,j) += DP[((i*d+k)*d+j)*d+l]*dF(k,l);
+      const T error = relative_error(dP,A);
+      //cout << "derivative error = "<<error<<endl;
+      GEODE_ASSERT(error<1e-14,format("derivative error %g",error));
     }
   }
 }
@@ -56,9 +71,15 @@ static void neo_hookean_test(RawArray<const T> props, Random& random, const int 
   constitutive_model_test(NeoHookean<3>(props),random,steps);
 }
 
+static void laplace_cm_test(Random& random, const int steps) {
+  constitutive_model_test(LaplaceCM<2>(),random,steps);
+  constitutive_model_test(LaplaceCM<3>(),random,steps);
+}
+
 }
 using namespace hollow;
 
 void wrap_elastic_test() {
   GEODE_FUNCTION(neo_hookean_test)
+  GEODE_FUNCTION(laplace_cm_test)
 }

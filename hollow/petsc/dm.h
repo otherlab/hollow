@@ -1,9 +1,10 @@
 // Wrapper around a DM
 #pragma once
 
-#include <hollow/petsc/vec.h>
+#include <hollow/petsc/analytic.h>
 #include <hollow/petsc/mat.h>
 #include <hollow/petsc/model.h>
+#include <hollow/petsc/vec.h>
 #include <geode/mesh/forward.h>
 #include <geode/mesh/ids.h>
 #include <geode/python/Ptr.h>
@@ -13,6 +14,8 @@ namespace hollow {
 struct DM : public Object {
   GEODE_DECLARE_TYPE(HOLLOW_EXPORT)
   typedef Object Base;
+  typedef PetscReal T;
+  typedef PetscScalar S;
 
   ::DM dm;
 
@@ -32,7 +35,6 @@ public:
 struct DMPlex : public DM {
   GEODE_DECLARE_TYPE(HOLLOW_EXPORT)
   typedef DM Base;
-  typedef PetscReal T;
 
 protected:
   Ptr<const Model> model;
@@ -61,6 +63,9 @@ public:
   // Returns the numbers of boundary faces and all boundary elements
   Vector<int,2> mark_boundary(const string& label);
 
+  // Mark the given indices and all their descendents
+  Vector<int,2> mark(const string& label, RawArray<const int> indices);
+
   // Create and set the default section
   //   dim - spatial dimension
   //   fes - list of FE objects
@@ -70,10 +75,16 @@ public:
                               const string& boundary_label, RawArray<const int> boundary_fields);
 
   // Set function and Jacobian evaluation based on a finite element model
-  void set_model(const Model& model);
+  void set_model(const Model& model, const bool use_energy);
+
+  // Project a field to approximate an analytic function.  Requires a model.
+  void project(const vector<Ref<const Analytic>> fs, InsertMode mode, Vec& x) const;
 
   // Compare a vec against an analytic function.  Requires a model.
   T L2_error_vs_exact(const Vec& v) const;
+
+  // Write mesh and solution vector to a .vtk file
+  void write_vtk(const string& filename, const Vec& v) const;
 };
 
 // Create an unrefined unit box DM

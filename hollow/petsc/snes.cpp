@@ -29,6 +29,10 @@ SNES::~SNES() {
   CHECK(SNESDestroy(&const_cast_(snes)));
 }
 
+MPI_Comm SNES::comm() const {
+  return PetscObjectComm((PetscObject)snes);
+}
+
 void SNES::set_from_options() {
   CHECK(SNESSetFromOptions(snes));
 }
@@ -120,11 +124,15 @@ void SNES::consistency_test(const Vec& x, const T small, const T rtol, const T a
     // Check residual vs. jacobian
     fp->axpy(-1,fm); // fp = fp-fm
     CHECK(MatMult(A,dx->v,df->v));
-    const T scale = max(fp->norm(NORM_MAX),2*df->norm(NORM_MAX));
+    const T fp_norm = fp->norm(NORM_MAX),
+            df_norm = 2*df->norm(NORM_MAX),
+            scale = max(fp_norm,df_norm,1e-30);
     fp->axpy(-2,df);
-    const T error = fp->norm(NORM_MAX)/scale;
-    cout << "snes residual/jacobian error = "<<error<<endl;
-    GEODE_ASSERT(error<rtol);
+    const T aerror = fp->norm(NORM_MAX),
+            rerror = aerror/scale;
+    cout << "snes residual/jacobian error = "<<rerror<<" "<<aerror
+         <<" (fp norm "<<fp_norm<<", df norm "<<df_norm<<")"<<endl;
+    GEODE_ASSERT(rerror<rtol,"residual/jacobian error");
   }
 }
 
@@ -150,6 +158,7 @@ void wrap_snes() {
   typedef hollow::SNES Self;
   Class<Self>("SNES")
     .GEODE_INIT(MPI_Comm)
+    .GEODE_GET(comm)
     .GEODE_METHOD(set_from_options)
     .GEODE_METHOD(set_dm)
     .GEODE_METHOD(set_jacobian)
@@ -158,5 +167,6 @@ void wrap_snes() {
     .GEODE_METHOD(residual)
     .GEODE_METHOD(consistency_test)
     .GEODE_METHOD(add_monitor)
+    .GEODE_METHOD(has_objective)
     ;
 }
