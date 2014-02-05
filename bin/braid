@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+
+from __future__ import division,print_function,absolute_import
+from hollow import *
+from geode import *
+import sys
+
+# Define properties
+props = PropManager()
+props.add('petsc','')
+props.add('stiffness',1.).set_abbrev('k')
+props.add('pressure',.002).set_abbrev('p')
+props.add('length',10.).set_abbrev('L')
+props.add('radius',1.).set_abbrev('r').set_help('initial radius')
+props.add('resolution',100).set_abbrev('n')
+props.add('tau',atan(sqrt(2))).set_help('initial braid angle')
+parser.parse(props,'Quasistatic solver for an idealized braided pressurized tube')
+
+# Grab values
+stiffness = props.stiffness()
+pressure = props.pressure()
+
+def energy(t,u,du):
+  # Radius, axial distance, fiber angular position
+  r,z,a     = rollaxis(u,-1)
+  dr,dz,da = rollaxis(du,-1)
+
+  # Compute strain
+  rr = sqr(r)
+  ff = sqr(dr)+sqr(dz)+rr*sqr(da)
+  e = sqrt(ff)-1
+
+  # Evaluate energy
+  psi = stiffness/2*sqr(e)
+  return psi-pressure*pi*rr*dz
+
+def main():
+  L = props.length()
+  r0 = props.radius()
+  n = props.resolution()
+
+  # Compute initial braid geometry via
+  #   u0 = t0
+  #   z = s
+  #   s_u = cos tau
+  #   s_u^2 + (r a_u)^2 = 1
+  tau = props.tau()
+  s_t = cos(tau)
+  z0 = z = L*arange(-1,n+3)/n
+  t = z/s_t
+  a_t = sqrt(1-sqr(s_t))/r0
+  a = a_t*t
+  
+  # Construct system
+  fixed = [(i,j) for i in 1,-2 for j in 0,1,2] # Fix r,z,a on both ends
+  # fixed = [(1,0),(-1,0)]+[(1,1)]+[(1,2),(-1,2)] # Fix r,a on both ends
+  # fixed = [(1,2),(-1,2)]+[(1,1)] # Fix only a
+  small = 1e-6*ones(3)
+  I = Integral(energy,t,(3,),fixed,small,small)
+  u0 = array([r0+0*t,z,a]).T.copy()
+
+  # Initialize petsc
+  petsc_initialize('Idealized braided pressurized tube','''
+    braid -tao_view -tao_monitor -tao_converged_reason
+    -tao_type tao_lmvm -tao_lmm_vectors 20 -tao_max_it 1200
+    -tao_fatol 1e-10 -tao_frtol 1e-10
+    '''.split())
+
+  # Check validity
+  print('energy start = %g'%I(u0))
+  if 0:
+    I.consistency_test(u0,1e-6,1e-7,1e-20,10)
+ 
+  # Solve
+  u = I.minimize(u0)
+  r,z,a = rollaxis(u,-1) 
+
+  # Plot
+  import pylab
+  def cut(x):
+    return x[1:-1]
+  if 0:
+    pylab.figure(1)
+    pylab.plot(cut(z),cut(r),'.-')
+    pylab.xlabel('axial distance')
+    pylab.ylabel('radius')
+    pylab.xlim(0,L)
+    if 0:
+      pylab.figure(2)
+      pylab.plot(cut(z),cut(a),'.-')
+      pylab.xlabel('axial distance')
+      pylab.ylabel('fiber angular position')
+      pylab.xlim(0,L)
+  else:
+    for i,(name,x) in enumerate((('z',z),('r',r),('a',a))):
+      pylab.figure(1+i)
+      pylab.plot(cut(t),cut(x),'.-')
+      pylab.xlabel('t')
+      pylab.ylabel(name)
+      if name=='z':
+        pylab.title('z range %g, z0 range %g'%(z[-1],z0[-1]))
+  pylab.show()
+
+if __name__=='__main__':
+  main()

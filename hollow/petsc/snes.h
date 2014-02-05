@@ -45,8 +45,9 @@ public:
   // Compute function
   void residual(const Vec& x, Vec& f) const;
 
-  // Do we have an objective function?
+  // Do we have various functions?
   bool has_objective() const;
+  bool has_jacobian() const;
 
   // Compare residuals and jacobians to finite differences
   void consistency_test(const Vec& x, const T small, const T rtol, const T atol, const int steps) const;

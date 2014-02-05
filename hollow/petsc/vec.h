@@ -58,4 +58,44 @@ static inline PetscScalar dot(const Vec& x, const Vec& y) {
   return dot;
 }
 
+template<class SV> struct RawVec : public RawArray<SV> {
+  typedef RawArray<SV> Base;
+  typedef PetscScalar S;
+  static_assert(is_same<S,typename remove_const<typename ScalarPolicy<SV>::type>::type>::value,"");
+  static const int ratio = sizeof(SV)/sizeof(S);
+
+  const ::Vec v;
+
+  RawVec(::Vec v)
+    : Base(size(v),(SV*)data(v,mpl::bool_<is_const<SV>::value>()))
+    , v(v) {}
+
+  ~RawVec() {
+    typedef typename ScalarPolicy<SV>::type Sc;
+    auto data = (Sc*)Base::data();
+    restore(v,data);
+  }
+
+  template<class TA> const Base& operator=(const TA& source) const {
+    return static_cast<const Base&>(*this) = source;
+  }
+
+private:
+
+  static int size(const ::Vec v) {
+    const int ratio = sizeof(SV)/sizeof(S);
+    static_assert(ratio*sizeof(S)==sizeof(SV),"");
+    int local;
+    CHECK(VecGetLocalSize(v,&local));
+    const int size = local/ratio;
+    GEODE_ASSERT(size*ratio==local);
+    return size;
+  }
+
+  static       S* data(const ::Vec v, mpl::false_) {       S* p; CHECK(VecGetArray    (v,&p)); return p; }
+  static const S* data(const ::Vec v, mpl::true_ ) { const S* p; CHECK(VecGetArrayRead(v,&p)); return p; }
+  static void restore(const ::Vec v,       S*& p) { CHECK(VecRestoreArray    (v,&p)); }
+  static void restore(const ::Vec v, const S*& p) { CHECK(VecRestoreArrayRead(v,&p)); }
+};
+
 }

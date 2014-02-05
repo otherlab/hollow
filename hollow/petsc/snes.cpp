@@ -67,9 +67,14 @@ void SNES::residual(const Vec& x, Vec& f) const {
 
 bool SNES::has_objective() const {
   PetscErrorCode (*objective)(::SNES,::Vec,T*,void*);
-  void* context;
-  CHECK(SNESGetObjective(snes,&objective,&context));
+  CHECK(SNESGetObjective(snes,&objective,0));
   return objective!=0;
+}
+
+bool SNES::has_jacobian() const {
+  PetscErrorCode (*jacobian)(::SNES,::Vec,::Mat*,::Mat*,MatStructure*,void*);
+  CHECK(SNESGetJacobian(snes,0,0,&jacobian,0));
+  return jacobian!=0;
 }
 
 void SNES::consistency_test(const Vec& x, const T small, const T rtol, const T atol, const int steps) const {
@@ -79,17 +84,20 @@ void SNES::consistency_test(const Vec& x, const T small, const T rtol, const T a
              fm = x.clone(),
              fp = x.clone(),
              df = x.clone();
-  const bool has_objective = this->has_objective();
+  const bool has_objective = this->has_objective(),
+             has_jacobian = this->has_jacobian();
+  GEODE_ASSERT(has_objective || has_jacobian);
 
   // Compute information at x
   const auto f = x.clone();
   residual(x,f);
   ::KSP ksp;
-  CHECK(SNESGetKSP(snes,&ksp));
   ::Mat A,P;MatStructure flag;
-  CHECK(KSPGetOperators(ksp,&A,&P,&flag));
-  flag = DIFFERENT_NONZERO_PATTERN;
-  CHECK(SNESComputeJacobian(snes,x.v,&A,&P,&flag));
+  if (has_jacobian) {
+    CHECK(SNESGetKSP(snes,&ksp));
+    CHECK(KSPGetOperators(ksp,&A,&P,&flag));
+    CHECK(SNESComputeJacobian(snes,x.v,&A,&P,&flag));
+  }
 
   // Try a variety of differential shifts
   for (int step=0;step<steps;step++) {
@@ -121,18 +129,20 @@ void SNES::consistency_test(const Vec& x, const T small, const T rtol, const T a
       GEODE_ASSERT(rerror<rtol || aerror<atol);
     }
 
-    // Check residual vs. jacobian
-    fp->axpy(-1,fm); // fp = fp-fm
-    CHECK(MatMult(A,dx->v,df->v));
-    const T fp_norm = fp->norm(NORM_MAX),
-            df_norm = 2*df->norm(NORM_MAX),
-            scale = max(fp_norm,df_norm,1e-30);
-    fp->axpy(-2,df);
-    const T aerror = fp->norm(NORM_MAX),
-            rerror = aerror/scale;
-    cout << "snes residual/jacobian error = "<<rerror<<" "<<aerror
-         <<" (fp norm "<<fp_norm<<", df norm "<<df_norm<<")"<<endl;
-    GEODE_ASSERT(rerror<rtol,"residual/jacobian error");
+    if (has_jacobian) {
+      // Check residual vs. jacobian
+      fp->axpy(-1,fm); // fp = fp-fm
+      CHECK(MatMult(A,dx->v,df->v));
+      const T fp_norm = fp->norm(NORM_MAX),
+              df_norm = 2*df->norm(NORM_MAX),
+              scale = max(fp_norm,df_norm,1e-30);
+      fp->axpy(-2,df);
+      const T aerror = fp->norm(NORM_MAX),
+              rerror = aerror/scale;
+      cout << "snes residual/jacobian error = "<<rerror<<" "<<aerror
+           <<" (fp norm "<<fp_norm<<", df norm "<<df_norm<<")"<<endl;
+      GEODE_ASSERT(rerror<rtol,"residual/jacobian error");
+    }
   }
 }
 
