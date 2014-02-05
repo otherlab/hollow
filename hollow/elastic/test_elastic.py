@@ -196,8 +196,8 @@ def test_elastic_fe_snes():
 def test_elastic_fe_tao():
   elastic_test(make_props(type='fe',mode='tao',resolution=(8,),petsc='-tao_monitor',check=1))
 
-def test_elastic_fe_tao_laplace():
-  elastic_test(make_props(type='fe',mode='tao',model='laplace',resolution=(8,),petsc='-tao_monitor',check=1))
+def test_laplace_fe_tao():
+  elastic_test(make_props(type='fe',mode='tao',model='laplace',density=1,resolution=(8,),petsc='-tao_monitor',check=1))
 
 if __name__=='__main__':
   test_neo_hookean()
