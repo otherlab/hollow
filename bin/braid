@@ -22,7 +22,7 @@ pressure = props.pressure()
 
 def energy(t,u,du):
   # Radius, axial distance, fiber angular position
-  r,z,a     = rollaxis(u,-1)
+  r,z,a    = rollaxis( u,-1)
   dr,dz,da = rollaxis(du,-1)
 
   # Compute strain
