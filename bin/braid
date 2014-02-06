@@ -75,10 +75,15 @@ def main():
   u = I.minimize(u0)
   r,z,a = rollaxis(u,-1) 
 
-  # Plot
-  import pylab
+  # Compute strain
   def cut(x):
     return x[1:-1]
+  dr,dz,da = [I.derivative(x.copy()) for x in r,z,a]
+  ff = sqr(dr)+sqr(dz)+sqr(cut(r))*sqr(da)
+  e = sqrt(ff)-1
+
+  # Plot
+  import pylab
   if 0:
     pylab.figure(1)
     pylab.plot(cut(z),cut(r),'.-')
@@ -92,13 +97,18 @@ def main():
       pylab.ylabel('fiber angular position')
       pylab.xlim(0,L)
   else:
-    for i,(name,x) in enumerate((('z',z),('r',r),('a',a))):
-      pylab.figure(1+i)
-      pylab.plot(cut(t),cut(x),'.-')
+    def draw(name,x):
+      pylab.figure()
+      if len(x)==len(t):
+        x = cut(x)
+      pylab.plot(cut(t),x,'.-')
       pylab.xlabel('t')
       pylab.ylabel(name)
-      if name=='z':
-        pylab.title('z range %g, z0 range %g'%(z[-1],z0[-1]))
+    draw('z',z)
+    pylab.title('z range %g, z0 range %g'%(z[-1],z0[-1]))
+    draw('r',r)
+    draw('a',a)
+    draw('e',e)
   pylab.show()
 
 if __name__=='__main__':

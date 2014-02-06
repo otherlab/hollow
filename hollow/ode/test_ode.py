@@ -34,8 +34,10 @@ def test_integral():
     return [aa[2]-aa[1] for aa in a]
   assert allclose(F(t),cdot(*d(t,t**2/2,t**2/2,t,t**3/3,t**5/5)))
   assert allclose(G(t*t),d(2/3*t**6))
+  assert allclose(G.derivative(t*t),2*t[1:-1])
   hx = array([t,t*t]).T.copy()
   assert allclose(H(hx),cdot(*d(t,t**2/2,t**3/3,t**3/3,t**4/4,t**5/5)))
+  assert allclose(H.derivative(hx),array([1+0*t,2*t]).T.copy()[1:-1])
   x = random.randn(4)
   hx = random.randn(4,2)
   F.consistency_test(x,small,1e-5,1e-15,20)

@@ -99,20 +99,22 @@ protected:
 public:
   ~Integral() {}
 
-  #define T_INFO(i) \
+  #define T_INFO_LEFT(i) \
     const T t0 = t[i], \
             t1 = t[i+1], \
             t2 = t[i+2], \
-            t3 = t[i+3], \
             dt = t2-t1, \
             inv_dt = 1/dt, \
             dt0 = t1-t0, \
-            dt1 = t3-t2, \
             s0 = 1/(dt0*(dt+dt0)), \
-            s1 = 1/(dt1*(dt+dt1)), \
             c00 = -s0*sqr(dt), \
             c01 = s0*(dt0+dt)*(dt-dt0), \
-            c02 = s0*sqr(dt0), \
+            c02 = s0*sqr(dt0);
+  #define T_INFO(i) \
+    T_INFO_LEFT(i) \
+    const T t3 = t[i+3], \
+            dt1 = t3-t2, \
+            s1 = 1/(dt1*(dt+dt1)), \
             c10 = -s1*sqr(dt1), \
             c11 = s1*(dt+dt1)*(dt1-dt), \
             c12 = s1*sqr(dt);
@@ -134,6 +136,23 @@ public:
             x1 = x(i+1,a), \
             x2 = x(i+2,a), \
             x3 = x(i+3,a);
+
+  NdArray<T> derivative(NdArray<const T> x) const {
+    GEODE_ASSERT(x.rank());
+    GEODE_ASSERT(x.shape[0]==n+3);
+    const auto shape = x.shape.copy();
+    shape[0] = n+1;
+    const NdArray<T> dx(shape,false);
+    const int k = x.flat.size()/(n+3);
+    for (int i=0;i<=n;i++) {
+      T_INFO_LEFT(i)
+      for (int a=0;a<k;a++)
+        dx.flat[i*k+a] = inv_dt*c00*x.flat[(i  )*k+a]
+                       + inv_dt*c01*x.flat[(i+1)*k+a]
+                       + inv_dt*c02*x.flat[(i+2)*k+a];
+    }
+    return dx;
+  }
 
   T operator()(RawArray<const T,2> x) const {
     // Temporary arrays and views
@@ -268,7 +287,7 @@ public:
           int j = 1;
           for (int b=0;b<d;b++) {
             const T xb = sx[b],
-                    vb = sv[b]; 
+                    vb = sv[b];
             xq(i,q,j++,a) -= xb;
             xq(i,q,j++,a) += xb;
             vq(i,q,j++,a) -= vb;
@@ -283,7 +302,7 @@ public:
             vq(i,q,j++,a) += vb;
             for (int c=b+1;c<d;c++) {
               const T xc = sx[c],
-                      vc = sv[c]; 
+                      vc = sv[c];
               xq(i,q,j++,a) -= xb+xc;
               xq(i,q,j++,a) -= xb-xc;
               xq(i,q,j++,a) += xb-xc;
@@ -445,5 +464,6 @@ void wrap_integral() {
     .GEODE_OVERLOADED_METHOD(NdArray<T>(Self::*)(NdArray<const T>)const,gradient)
     .GEODE_METHOD(minimize)
     .GEODE_METHOD(consistency_test)
+    .GEODE_METHOD(derivative)
     ;
 }
