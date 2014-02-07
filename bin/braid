@@ -102,13 +102,13 @@ def main():
       if len(x)==len(t):
         x = cut(x)
       pylab.plot(cut(t),x,'.-')
-      pylab.xlabel('t')
+      pylab.xlabel('fiber arc length (t)')
       pylab.ylabel(name)
-    draw('z',z)
-    pylab.title('z range %g, z0 range %g'%(z[-1],z0[-1]))
-    draw('r',r)
-    draw('a',a)
-    draw('e',e)
+    draw('axial distance (z)',z)
+    pylab.title('z range %g, z0 range %g'%(z[-2],z0[-2]))
+    draw('radius (r)',r)
+    draw('angle of fiber around tube (a)',a)
+    draw('strain (e)',e)
   pylab.show()
 
 if __name__=='__main__':
