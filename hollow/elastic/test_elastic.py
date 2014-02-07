@@ -4,6 +4,7 @@ from __future__ import division,print_function,unicode_literals,absolute_import
 from hollow import *
 from geode import *
 from geode.geometry.platonic import *
+import subprocess
 import sys
 
 def test_neo_hookean():
@@ -30,6 +31,7 @@ def make_props(**kwargs):
   props.add('model','neo-hookean').set_allowed('neo-hookean laplace'.split())
   props.add('mode','tao').set_allowed('tao snes'.split())
   props.add('type','iga').set_allowed('iga fe'.split())
+  props.add('output','').set_abbrev('o').set_help('use a nontemporary output file')
   for k,v in kwargs.items():
     props.get(k).set(v)
   return props
@@ -91,6 +93,9 @@ def elastic_test(props):
   rho_g = props.density()*props.gravity()*-axis_vector(d-1,d=d)
   type = props.type()
   mode = props.mode()
+
+  # Diagnostic options
+  petsc_add_options('ignored -tao_monitor -tao_converged_reason'.split())
 
   if type=='iga':
     assert props.model()=='neo-hookean'
@@ -178,9 +183,15 @@ def elastic_test(props):
       plt.surface(geom)
       plt.show()
     elif type=='fe':
-      f = named_tmpfile(prefix='elastic',suffix='.vtk')
-      dm.write_vtk(f.name,x)
-      subprocess.check_call(['vtk',f.name])
+      name = props.output()
+      if not name:
+        f = named_tmpfile(prefix='elastic',suffix='.vtk')
+        name = f.name
+      assert name.endswith('.vtk')
+      dm.write_vtk(name,x)
+      cmd = ['paraview',name]
+      print(' '.join(cmd))
+      subprocess.check_call(cmd)
     else:
       raise RuntimeError("weird type '%s'"%type)
 
