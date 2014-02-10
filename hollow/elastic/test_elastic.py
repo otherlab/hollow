@@ -85,14 +85,19 @@ def dm_geometry(props,comm):
   return dm
 
 def elastic_test(props):
+  type = props.type()
+  mode = props.mode()
   petsc_reinitialize()
-  petsc_set_options([sys.argv[0]]+props.petsc().split())
+  if mode=='tao':
+    petsc_add_options([sys.argv[0]]+'''
+      -tao_monitor -tao_converged_reason -tao_type tao_nls
+      -tao_nls_ksp_type petsc -ksp_type minres
+      -tay_max_it 200 -ksp_max_it 500'''.split())
+  petsc_add_options([sys.argv[0]]+props.petsc().split())
   comm = petsc_comm_world()
   d = props.dim()
   material = props.youngs_modulus(),props.poissons_ratio()
   rho_g = props.density()*props.gravity()*-axis_vector(d-1,d=d)
-  type = props.type()
-  mode = props.mode()
 
   # Diagnostic options
   petsc_add_options('ignored -tao_monitor -tao_converged_reason'.split())
@@ -189,7 +194,7 @@ def elastic_test(props):
         name = f.name
       assert name.endswith('.vtk')
       dm.write_vtk(name,x)
-      cmd = ['paraview',name]
+      cmd = ['hollow-view',name]
       print(' '.join(cmd))
       subprocess.check_call(cmd)
     else:

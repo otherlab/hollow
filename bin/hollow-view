@@ -5,6 +5,7 @@ from hollow import *
 from geode import *
 from geode.geometry.platonic import *
 import sys
+import re
 
 def make_props(**kwargs):
   props = PropManager()
@@ -23,7 +24,7 @@ def make_props(**kwargs):
 def geometry_file(props):
   return os.path.join(props.dir(),'geom.nurbs')
 
-def view(props):
+def view_dir(props):
   from igakit.io import PetIGA
   from igakit.nurbs import NURBS
 
@@ -124,6 +125,81 @@ def view(props):
   else:
     raise RuntimeError('bad mode %s'%mode)
 
+def read_vtk(path):
+  f = open(path)
+
+  def expect(line):
+    got = f.next()
+    if got[:-1] != line:
+      raise RuntimeError('expected %s, got %s'%(repr(line),repr(got)))
+  def read_array(*shape,**kwds):
+    return fromstring(' '.join(f.next() for i in xrange(shape[0])),sep=' ',**kwds).reshape(*shape)
+
+  expect('# vtk DataFile Version 2.0')
+  f.next() # Skip description
+  expect('ASCII')
+  expect('DATASET UNSTRUCTURED_GRID')
+
+  # Read rest positions
+  m = re.match(r'^POINTS\s+(\d+)\s+double$',f.next())
+  nv = int(m.group(1))
+  X0 = read_array(nv,3)
+
+  # Read mesh
+  m = re.match(r'^CELLS\s+(\d+)\s+(\d+)$',f.next())
+  nf = int(m.group(1))
+  nfc = int(m.group(2))
+  d = nfc//nf-2
+  assert nfc==(d+2)*nf,'nv %d, d %d, nfc %d'%(nf,d,nfc)
+  mesh = read_array(nf,d+2,dtype=int32)[:,1:].copy()
+
+  # Check cell types
+  expect('CELL_TYPES %d'%nf)
+  read_array(nf,dtype=int32)
+
+  # Read current positions
+  expect('POINT_DATA %d'%nv)
+  assert f.next().startswith('VECTORS ')
+  X = read_array(nv,3)
+
+  # All done?
+  try:
+    line = f.next()
+    raise RuntimeError('expected EOF, got: %s'%line)
+  except StopIteration:
+    pass
+  return X0,mesh,X
+
+def view_vtk(props):
+  X0,mesh,X = read_vtk(props.dir())
+  d = mesh.shape[1]-1
+
+  if d==2:
+    soup = TriangleSoup(mesh)
+    import gui
+    class VtkScene(gui.Scene):
+      def bounding_box(self):
+        return bounding_box(X)
+      def render(self,*pick):
+        from OpenGL import GL
+        GL.glColor([.3,.6,1])
+        GL.glBegin(GL.GL_TRIANGLES)
+        gui.gl_vertices(X[soup.elements])
+        GL.glEnd()
+        GL.glColor(zeros(3))
+        GL.glBegin(GL.GL_LINES)
+        gui.gl_vertices(X[soup.segment_soup().elements])
+        GL.glEnd()
+    app = gui.QEApp(sys.argv,True)
+    main = gui.MainWindow(props)
+    main.view.toggle_2d_mode(1)
+    main.view.interaction_mode.set(gui.InteractionMode('flat'))
+    main.view.interaction_mode().track = 0
+    main.view.add_scene('vtk',VtkScene())
+    main.view.show_all(True)
+    main.init()
+    app.run()
+
 def surfaces(nurbs):
   assert nurbs.dim in (2,3)
   if nurbs.dim==2:
@@ -135,4 +211,7 @@ if __name__=='__main__':
   props = make_props()
   parser.parse(props,'Hollow simulation viewer',positional=[props.dir])
   print('command = %s'%parser.command(props))
-  view(props)
+  if props.dir().endswith('.vtk'):
+    view_vtk(props)
+  elif os.path.isdir(props.dir()):
+    view_dir(props)
