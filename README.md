@@ -36,7 +36,9 @@ Installation of mayavi and mercurial (for petiga and igakit) varies with platfor
     sudo port -v install mercurial py27-mayavi
     sudo ln -s /opt/local/bin/gfortran-mp-4.7 /opt/local/bin/gfortran # So that python can find it
     sudo port -v install mpich-default
-    sudo port select --set mpich mpich-mp-fortran gcc48
+    sudo port select mpi mpich-mp-fortran
+    sudo port select gcc mp-gcc48	
+
 
 Hollow depends on unreleased features of petsc, so a specific branch is required:
 
@@ -49,9 +51,9 @@ Hollow depends on unreleased features of petsc, so a specific branch is required
 
     # Configure and build debug and release versions.
     # IMPORTANT: On MacPorts, add --with-mpi-dir=/opt/local
+    export PETSC_DIR=`pwd`
     ./configure --with-petsc-arch=debug   --with-debugging=1
     ./configure --with-petsc-arch=release --with-debugging=0
-    export PETSC_DIR=`pwd`
     make PETSC_ARCH=debug
     make PETSC_ARCH=release
     cd ..
