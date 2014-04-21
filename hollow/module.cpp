@@ -1,4 +1,10 @@
 #include <geode/python/module.h>
+#include <geode/array/convert.h>
+#include <geode/mesh/ids.h>
+
+namespace geode {
+ARRAY_CONVERSIONS(1,HalfedgeId)
+}
 
 GEODE_PYTHON_MODULE(hollow_wrap) {
   // petsc
