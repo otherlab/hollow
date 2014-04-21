@@ -74,7 +74,7 @@ def test_laplace():
       pylab.show()
   print('ns = %s'%ns)
   print('errors = %s'%-log2(errors))
-  assert all(-log2(errors)>[8,9,13,16,19,18,18])
+  assert all(-log2(errors)>[8,9,13,16,18,17,18])
   if debug:
     import pylab
     pylab.plot(log2(ns),-log2(errors))
