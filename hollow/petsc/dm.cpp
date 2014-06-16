@@ -229,8 +229,8 @@ void DMPlex::set_model(const Model& model, const bool use_energy) {
 void DMPlex::project(const vector<Ref<const Analytic>> fs, InsertMode mode, Vec& x) const {
   GEODE_ASSERT(model,"Can't project without a model");
   GEODE_ASSERT(model->fe.size()==fs.size());
-  Array<void(*)(const T*,S*,void*)> fps(int(fs.size()),false);
-  Array<void*> ctxs(int(fs.size()),false);
+  Array<void(*)(const T*,S*,void*)> fps(int(fs.size()),uninit);
+  Array<void*> ctxs(int(fs.size()),uninit);
   for (const int i : range(int(fs.size()))) {
     GEODE_ASSERT(fs[i]->dim==model->dim);
     GEODE_ASSERT(fs[i]->count==model->fe[i]->components());

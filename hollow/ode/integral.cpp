@@ -79,7 +79,7 @@ protected:
 
     // Collect boundary conditions
     GEODE_ASSERT(!fixed.m || fixed.n==xshape.size());
-    Array<Tuple<int,T>> bcs(fixed.m,false);
+    Array<Tuple<int,T>> bcs(fixed.m,uninit);
     for (int i=0;i<bcs.size();i++) {
       int I = 0;
       for (int j=0;j<fixed.n;j++) {
@@ -142,7 +142,7 @@ public:
     GEODE_ASSERT(x.shape[0]==n+3);
     const auto shape = x.shape.copy();
     shape[0] = n+1;
-    const NdArray<T> dx(shape,false);
+    const NdArray<T> dx(shape,uninit);
     const int k = x.flat.size()/(n+3);
     for (int i=0;i<=n;i++) {
       T_INFO_LEFT(i)
@@ -159,9 +159,9 @@ public:
     GEODE_ASSERT(x.sizes()==vec(n+3,d));
 
     // Collect quadrature points
-    Array<T,2> tq(n,quads,false);
-    Array<T,3> xq(n,quads,d,false);
-    Array<T,3> vq(n,quads,d,false);
+    Array<T,2> tq(n,quads,uninit);
+    Array<T,3> xq(n,quads,d,uninit);
+    Array<T,3> vq(n,quads,d,uninit);
     for (int i=0;i<n;i++) {
       T_INFO(i)
       for (int q=0;q<quads;q++) {
@@ -199,9 +199,9 @@ public:
 
     // Collect quadrature points
     const int e = 4*d;
-    Array<T,3> tq(    n,quads,e,false);
-    Array<T,4> xq(vec(n,quads,e,d),false);
-    Array<T,4> vq(vec(n,quads,e,d),false);
+    Array<T,3> tq(    n,quads,e,uninit);
+    Array<T,4> xq(vec(n,quads,e,d),uninit);
+    Array<T,4> vq(vec(n,quads,e,d),uninit);
     for (int i=0;i<n;i++) {
       T_INFO(i)
       for (int q=0;q<quads;q++) {
@@ -265,9 +265,9 @@ public:
 
     // Collect quadrature points
     const int e = 1+8*d+8*d*(d-1);
-    Array<T,3> tq(    n,quads,e,false);
-    Array<T,4> xq(vec(n,quads,e,d),false);
-    Array<T,4> vq(vec(n,quads,e,d),false);
+    Array<T,3> tq(    n,quads,e,uninit);
+    Array<T,4> xq(vec(n,quads,e,d),uninit);
+    Array<T,4> vq(vec(n,quads,e,d),uninit);
     for (int i=0;i<n;i++) {
       T_INFO(i)
       for (int q=0;q<quads;q++) {
@@ -361,7 +361,7 @@ public:
 
   NdArray<T> gradient(NdArray<const T> x) const {
     GEODE_ASSERT(x.shape==xshape);
-    NdArray<T> grad(xshape,false);
+    NdArray<T> grad(xshape,uninit);
     gradient(x.flat.reshape(n+3,d),grad.flat.reshape(n+3,d));
     return grad;
   }

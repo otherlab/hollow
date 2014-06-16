@@ -53,7 +53,7 @@ void petsc_initialize(const string& help, const vector<string>& args) {
   CHECK(MPI_Init(0,0));
 
   int argc = int(args.size());
-  Array<char*> pointers(argc,false);
+  Array<char*> pointers(argc,uninit);
   for(int i=0;i<argc;i++)
     pointers[i] = (char*)args[i].c_str();
   char** argv = pointers.data();
@@ -82,7 +82,7 @@ void petsc_add_options(const vector<string>& args) {
   GEODE_ASSERT(args.size() && args[0].size() && args[0][0]!='-');
   // Add new options
   int argc = int(args.size());
-  Array<char*> pointers(argc,false);
+  Array<char*> pointers(argc,uninit);
   for(int i=0;i<argc;i++)
     pointers[i] = (char*)args[i].c_str();
   char** argv = pointers.data();
