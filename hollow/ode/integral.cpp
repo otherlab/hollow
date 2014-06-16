@@ -368,7 +368,8 @@ public:
 
   RawArray<const T,2> expand(RawArray<const T> xr) const {
     GEODE_ASSERT(xr.size()==(n+3)*d-bcs.size());
-    x_expanded.resize(n+3,d,false,false);
+    x_expanded.clear();
+    x_expanded.resize(n+3,d,uninit);
     const auto xe = x_expanded.flat.raw();
     for (int k=0;k<=bcs.size();k++) {
       const int lo = k ? bcs[k-1].x+1 : 0,
@@ -398,7 +399,8 @@ public:
 
   template<class A> static PetscErrorCode gradient(A, ::Vec x, ::Vec grad, void* ctx) {
     const auto& s = *(const Self*)ctx;
-    s.grad_expanded.resize(s.n+3,s.d,false);
+    s.grad_expanded.clear();
+    s.grad_expanded.resize(s.n+3,s.d,uninit);
     s.gradient(s.expand(RawVec<const T>(x)),s.grad_expanded);
     s.reduce(s.grad_expanded.flat,RawVec<T>(grad));
     return 0;
