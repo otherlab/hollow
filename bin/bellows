@@ -4,8 +4,7 @@ from __future__ import division,print_function,absolute_import
 from hollow import *
 from geode import *
 import sys
-import numpy as np
-import logging 
+import logging
 
 # Define properties
 props = PropManager()
@@ -23,7 +22,6 @@ parser.parse(props,'Quasistatic solver for cylindrically symmetric bellows')
 # Grab values
 shape = props.shape()
 stiffness = props.stiffness()
-pressure = props.pressure()
 penalty = props.penalty()
 R0 = props.inner_radius()
 R1 = props.outer_radius()
@@ -31,17 +29,17 @@ dR = R1-R0
 
 logging.basicConfig(format='[%(asctime)s]:%(levelname)s:(%(module)s:%(lineno)d):||%(message)s',level=logging.DEBUG)
 logging.info('starting')
-
 logger = logging.getLogger(__name__)
 
 def initial_r(t):
-  if shape=='circle': 
+  if shape=='circle':
     return R0+dR*sin(t/dR)
   else:
     raise NotImplemented("Unknown shape '%s'"%shape)
 
-def initial_z(height,t):
-  if shape=='circle': 
+def initial_z(t):
+  height = props.height()
+  if shape=='circle':
     def z0(t):
       return dR*(1-cos(t/dR))
     return height/z0(pi*dR)*z0(t)
@@ -61,7 +59,7 @@ def energy(t,u,du):
   psi_e = pi*stiffness*r0*(sqr(er)+sqr(ea))
 
   # Pressure energy
-  psi_p = -pi*pressure*sqr(r)*dz
+  psi_p = -pi*props.pressure()*sqr(r)*dz
 
   # Collision penalty
   psi_c = penalty/2*r0*sqr(minimum(0,z))
@@ -76,87 +74,22 @@ def collision_load(t,u,du):
   r0 = initial_r(t)
 
   # Derivative of collision penalty
-  return -penalty/2*r0*minimum(0,z)
+  return -penalty*r0*minimum(0,z)
 
-
-def constraint_h(h):
-  n = props.resolution()
-  height = h
-
-  # Initial half bellow geometry
-  T = pi/2*dR
-  t = T*arange(-1,n+2)/n
-  r0 = initial_r(t)
-  z0 = initial_z(height,t)
-
-  # Construct system
-  fixed = [(1,1), # start height
-           (-2,1)] # end height
-  small = 1e-6*ones(2)
-  I = Integral(energy,t,(2,),fixed,small,small)
-  u0 = array([r0,z0]).T.copy()
-
-  # Check validity
-  print('energy start = %g'%I(u0))
-  if 1:
-    I.consistency_test(u0,1e-6,1e-4,1e-20,10)
- 
-  # Solve
-  u = I.minimize(u0)
-  r,z = rollaxis(u,-1) 
-
-  # Energy and load
-  print('initial energy = %g'%I(u0))
-  print('energy = %g'%I(u))
-  L = Integral(collision_load,t,(2,),fixed,small,small)
   initial_load = L(u0)
   final_load = L(u)
   print('initial load = %g'%initial_load)
   print('load = %g'%final_load)
-
-  # Compute strain
-  if 0:
-    def cut(x):
-      return x[1:-1]
-    dr,dz,da = [I.derivative(x.copy()) for x in r,z,a]
-    ff = sqr(dr)+sqr(dz)+sqr(cut(r))*sqr(da)
-    e = sqrt(ff)-1
-
   return final_load
 
-
-def main():
-
-  # Initialize petsc
-  petsc_initialize('Bellows','''
-    braid -tao_view -tao_monitor -tao_converged_reason
-    -tao_type tao_lmvm -tao_lmm_vectors 20 -tao_max_it 1200
-    -tao_fatol 1e-10 -tao_frtol 1e-10
-    '''.split())
-
-  import pylab
-  heights = np.linspace(0.05,0.06,50)
-  l = []
-  for h in heights:
-    logger.info(l)
-    l.append(constraint_h(h))
-  logger.info( heights )
-  logger.info( l )
-
-  pylab.scatter(heights ,np.array(l))
-  pylab.show()
-
-    
-
-  exit()
-
+def single(scale=1,plot=1):
   n = props.resolution()
 
   # Initial half bellow geometry
   T = pi/2*dR
   t = T*arange(-1,n+2)/n
   r0 = initial_r(t)
-  z0 = initial_z(t)
+  z0 = scale*initial_z(t)
 
   # Construct system
   fixed = [(1,1), # start height
@@ -165,28 +98,22 @@ def main():
   I = Integral(energy,t,(2,),fixed,small,small)
   u0 = array([r0,z0]).T.copy()
 
-  # Initialize petsc
-  petsc_initialize('Bellows','''
-    braid -tao_view -tao_monitor -tao_converged_reason
-    -tao_type tao_lmvm -tao_lmm_vectors 20 -tao_max_it 1200
-    -tao_fatol 1e-10 -tao_frtol 1e-10
-    '''.split())
-
   # Check validity
   print('energy start = %g'%I(u0))
   if 1:
     I.consistency_test(u0,1e-6,1e-4,1e-20,10)
- 
+
   # Solve
   u = I.minimize(u0)
-  r,z = rollaxis(u,-1) 
+  r,z = rollaxis(u,-1)
 
   # Energy and load
   print('initial energy = %g'%I(u0))
   print('energy = %g'%I(u))
   L = Integral(collision_load,t,(2,),fixed,small,small)
   print('initial load = %g'%L(u0))
-  print('load = %g'%L(u))
+  load = L(u)
+  print('load = %g'%load)
 
   # Compute strain
   if 0:
@@ -197,16 +124,77 @@ def main():
     e = sqrt(ff)-1
 
   # Plot
+  if plot:
+    import pylab
+    pylab.plot(r0[1:-1],z0[1:-1],'b',label='initial')
+    pylab.plot(r[1:-1],z[1:-1],'g',label='result')
+    pylab.plot(r[1],z[1],'og')
+    pylab.xlabel('radius')
+    pylab.ylabel('height')
+    pylab.legend(loc='upper left')
+    pylab.axes().set_aspect('equal')
+    pylab.xlim(0,1.1*R1)
+    pylab.show()
+
+  # All done!
+  return load
+
+def heights():
+  heights = linspace(0.05,0.06,50)
+  loads = []
+  for h in heights:
+    logger.info(loads)
+    props.height.set(h)
+    loads.append(single(plot=0))
+  logger.info(heights)
+  logger.info(loads)
+
   import pylab
-  pylab.plot(r0[1:-1],z0[1:-1],'b',label='initial')
-  pylab.plot(r[1:-1],z[1:-1],'g',label='result')
-  pylab.plot(r[1],z[1],'og')
-  pylab.xlabel('radius')
-  pylab.ylabel('height')
-  pylab.legend(loc='upper left')
-  pylab.axes().set_aspect('equal')
-  pylab.xlim(0,1.1*R1)
+  pylab.scatter(heights,loads)
   pylab.show()
+
+def manifold():
+  heights = linspace(.05,.06,30)
+  pressures = linspace(.1,1,12)
+  data = []
+  h0 = props.height()
+  for h in heights:
+    for p in pressures:
+      props.pressure.set(p)
+      L = single(scale=h/h0,plot=0)
+      data.append((p,h,L))
+  p,h,L = asarray(data).T
+
+  import pylab
+  if 1:
+    pylab.scatter(h/h0,sqrt(L/(pi*p))/h0,s=20,c=L)
+    pylab.xlabel('height / rest-height')
+    pylab.ylabel('something')
+  else:
+    if len(heights) > 1:
+      from mpl_toolkits.mplot3d import axes3d,Axes3D
+      axes = Axes3D(pylab.figure())
+      pylab.scatter(p,L,zs=h)
+      axes.set_xlabel('pressure')
+      axes.set_ylabel('load')
+      axes.set_zlabel('height')
+    else:
+      pylab.scatter(p,L)
+      pylab.xlabel('pressure')
+      pylab.ylabel('load')
+  pylab.show()
+
+def main():
+  # Initialize petsc
+  petsc_initialize('Bellows','''
+    braid -tao_view -tao_monitor -tao_converged_reason
+    -tao_type tao_lmvm -tao_lmm_vectors 20 -tao_max_it 1200
+    -tao_fatol 1e-10 -tao_frtol 1e-10
+    '''.split())
+
+  # Do something
+  manifold()
+  #single() 
 
 if __name__=='__main__':
   main()
