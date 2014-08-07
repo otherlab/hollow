@@ -39,7 +39,7 @@ static const T weights[quads] = {5./18,8./18,5./18};
 static const T samples[quads] = {(1-sqrt(.6))/2,.5,(1+sqrt(.6))/2};
 
 // Evaluate energy at a bunch of quadrature points.  len(t)==len(x)==len(v) is arbitrary.
-typedef boost::function<Array<T>(Array<const T> t, NdArray<const T> x, NdArray<const T> v)> PointEnergy;
+typedef function<Array<T>(Array<const T> t, NdArray<const T> x, NdArray<const T> v)> PointEnergy;
 
 struct Integral : public Object {
   GEODE_DECLARE_TYPE(GEODE_NO_EXPORT)

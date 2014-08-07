@@ -4,8 +4,8 @@
 #include <hollow/petsc/vec.h>
 #include <hollow/petsc/mat.h>
 #include <hollow/petsc/dm.h>
+#include <geode/utility/function.h>
 #include <petscsnes.h>
-#include <boost/function.hpp>
 namespace hollow {
 
 struct SNES : public Object {
@@ -53,7 +53,7 @@ public:
   void consistency_test(const Vec& x, const T small, const T rtol, const T atol, const int steps) const;
 
   // Add an additional monitoring routine
-  void add_monitor(const boost::function<void(int,T)>& monitor);
+  void add_monitor(const function<void(int,T)>& monitor);
 };
 
 }

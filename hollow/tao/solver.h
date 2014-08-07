@@ -3,7 +3,6 @@
 
 #include <hollow/petsc/vec.h>
 #include <hollow/petsc/snes.h>
-#include <boost/function.hpp>
 #include <taosolver.h>
 namespace hollow {
 
@@ -33,7 +32,7 @@ public:
   void set_snes(const SNES& snes);
 
   // Add an additional monitoring routine
-  void add_monitor(const boost::function<void()>& monitor);
+  void add_monitor(const function<void()>& monitor);
 };
 
 }
