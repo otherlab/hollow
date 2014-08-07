@@ -36,7 +36,7 @@ HOLLOW_EXPORT Array<S,2> dense_copy(::Mat A) {
   CHECK(MatGetSize     (A,&gn.x,&gn.y));
   CHECK(MatGetLocalSize(A,&ln.x,&ln.y));
   GEODE_ASSERT(ln==gn);
-  Array<S,2> D(gn,false);
+  Array<S,2> D(gn,uninit);
   CHECK(MatGetValues(A,gn.x,arange(gn.x).copy().data(),
                        gn.y,arange(gn.y).copy().data(),D.data()));
   return D;

@@ -11,6 +11,7 @@ namespace hollow {
 
 GEODE_DEFINE_TYPE(SNES)
 typedef PetscReal T;
+using geode::copysign;
 using Log::cout;
 using std::endl;
 
@@ -146,7 +147,7 @@ void SNES::consistency_test(const Vec& x, const T small, const T rtol, const T a
   }
 }
 
-typedef boost::function<void(int,T)> Monitor;
+typedef function<void(int,T)> Monitor;
 
 void SNES::add_monitor(const Monitor& monitor_) {
   const auto monitor = new Monitor(monitor_);

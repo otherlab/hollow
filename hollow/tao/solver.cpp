@@ -62,7 +62,7 @@ void TaoSolver::set_snes(const SNES& snes) {
   CHECK(TaoSetHessianRoutine(tao,A,P,snes_hessian,(void*)this));
 }
 
-typedef boost::function<void()> Monitor;
+typedef function<void()> Monitor;
 
 void TaoSolver::add_monitor(const Monitor& monitor_) {
   const auto monitor = new Monitor(monitor_);
