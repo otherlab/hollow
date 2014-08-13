@@ -1,5 +1,6 @@
-from __future__ import division
+#!/usr/bin/env python
 
+from __future__ import division
 from hollow import *
 
 def test_init():
@@ -7,3 +8,6 @@ def test_init():
   petsc_reinitialize()  
   petsc_set_options(['test','-foo'])
   petsc_finalize()
+
+if __name__ == '__main__':
+  test_init()

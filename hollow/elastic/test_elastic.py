@@ -90,9 +90,9 @@ def elastic_test(props):
   petsc_reinitialize()
   if mode=='tao':
     petsc_add_options([sys.argv[0]]+'''
-      -tao_monitor -tao_converged_reason -tao_type tao_nls
+      -tao_monitor -tao_converged_reason -tao_type nls
       -tao_nls_ksp_type petsc -ksp_type minres
-      -tay_max_it 200 -ksp_max_it 500'''.split())
+      -tao_max_it 200 -ksp_max_it 500'''.split())
   petsc_add_options([sys.argv[0]]+props.petsc().split())
   comm = petsc_comm_world()
   d = props.dim()

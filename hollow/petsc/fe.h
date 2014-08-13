@@ -23,6 +23,7 @@ protected:
 public:
   ~FE();
 
+  MPI_Comm comm() const;
   int spatial_dimension() const;
   int basis_dimension() const; // Number of basis functions *per component*
   int components() const;

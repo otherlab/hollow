@@ -17,11 +17,11 @@ GEODE_PYTHON_MODULE(hollow_wrap) {
   GEODE_WRAP(fe)
   GEODE_WRAP(dm)
   GEODE_WRAP(snes)
-  GEODE_WRAP(model)
+  //GEODE_WRAP(ds)
   GEODE_WRAP(analytic)
 
   // laplace
-  GEODE_WRAP(laplace)
+  //GEODE_WRAP(laplace)
 
   // iga
   GEODE_WRAP(iga)

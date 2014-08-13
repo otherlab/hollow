@@ -1,6 +1,6 @@
 // A 2D Laplace test
 
-#include <hollow/petsc/model.h>
+#include <hollow/petsc/ds.h>
 #include <geode/python/Class.h>
 #include <geode/python/stl.h>
 #include <geode/utility/Log.h>

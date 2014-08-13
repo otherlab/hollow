@@ -39,7 +39,7 @@ def laplace_test(props):
   b = iga.create_vec()
   iga.compute_system(A,b)
   ksp = iga.create_ksp()
-  ksp.set_operators(A,A,SAME_NONZERO_PATTERN)
+  ksp.set_operators(A,A)
   ksp.set_from_options()
   ksp.solve(b,u)
   Log.write(ksp.report())

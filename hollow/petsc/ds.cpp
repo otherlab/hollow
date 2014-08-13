@@ -1,13 +1,13 @@
-// Wrapper around PetscFEM
+// Wrapper around DS
 
-#include <hollow/petsc/model.h>
+#include <hollow/petsc/ds.h>
 #include <geode/python/Class.h>
 #include <geode/python/stl.h>
 namespace hollow {
 
-GEODE_DEFINE_TYPE(Model)
+GEODE_DEFINE_TYPE(DS)
 
-Model::Model(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd)
+DS::DS(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd)
   : dim(fe.at(0)->spatial_dimension())
   , fe(fe)
   , fe_aux(fe_aux)
@@ -43,6 +43,7 @@ Model::Model(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd)
   for (const int i : range(fep    .size())) fep    [i] = fe    [i]->fe;
   for (const int i : range(fep_aux.size())) fep_aux[i] = fe_aux[i]->fe;
   for (const int i : range(fep_bd .size())) fep_bd [i] = fe_bd [i]->fe;
+  CHECK(PetscDSCreate(fe.at(0)->comm(),&ds));
   fem.fe = fep.data();
   fem.feBd = fe_bd.size() ? fep_bd.data() : 0;
   fem.feAux = fep_aux.data();
@@ -59,14 +60,14 @@ Model::Model(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd)
   fem.bcCtxs = boundary_contexts.data();
 }
 
-Model::~Model() {}
+DS::~DS() {}
 
 }
 using namespace hollow;
 
-void wrap_model() {
-  typedef Model Self;
-  Class<Self>("Model")
+void wrap_ds() {
+  typedef DS Self;
+  Class<Self>("DS")
     .GEODE_FIELD(fe)
     .GEODE_FIELD(fe_aux)
     .GEODE_FIELD(fe_bd)

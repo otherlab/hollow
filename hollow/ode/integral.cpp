@@ -1,7 +1,7 @@
 // Optimize a second order integral of a curve, using cubic Catmull-Rom splines.
 // The focus is on simplicity (all numeric differentiation) and efficient usability from python.
 
-#include <hollow/tao/solver.h>
+#include <hollow/tao/tao.h>
 #include <geode/array/alloca.h>
 #include <geode/array/Array3d.h>
 #include <geode/array/Array4d.h>
@@ -439,9 +439,9 @@ public:
     reduce(x0.flat,RawVec<T>(x->v));
 
     // Solve using TAO
-    const auto tao = new_<TaoSolver>(PETSC_COMM_SELF);
-    CHECK(TaoSetObjectiveRoutine(tao->tao,value<::TaoSolver>,(void*)this));
-    CHECK(TaoSetGradientRoutine(tao->tao,gradient<::TaoSolver>,(void*)this));
+    const auto tao = new_<Tao>(PETSC_COMM_SELF);
+    CHECK(TaoSetObjectiveRoutine(tao->tao,value<::Tao>,(void*)this));
+    CHECK(TaoSetGradientRoutine(tao->tao,gradient<::Tao>,(void*)this));
     tao->set_from_options();
     tao->set_initial_vector(x);
     tao->solve();

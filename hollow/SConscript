@@ -1,3 +1,3 @@
 Import('env library')
 
-library(env,'hollow',pyname='hollow_wrap')
+library(env,'hollow',pyname='hollow_wrap',skip='laplace/laplace.cpp petsc/ds.cpp'.split())

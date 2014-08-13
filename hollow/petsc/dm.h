@@ -3,7 +3,7 @@
 
 #include <hollow/petsc/analytic.h>
 #include <hollow/petsc/mat.h>
-#include <hollow/petsc/model.h>
+#include <hollow/petsc/ds.h>
 #include <hollow/petsc/vec.h>
 #include <geode/mesh/forward.h>
 #include <geode/mesh/ids.h>
@@ -37,7 +37,7 @@ struct DMPlex : public DM {
   typedef DM Base;
 
 protected:
-  Ptr<const Model> model;
+  Ptr<const DS> ds;
 
   DMPlex(const ::DM dm); // Steals ownership
 public:
@@ -74,13 +74,13 @@ public:
   void create_default_section(const vector<string>& names, const vector<Ref<const FE>>& fes,
                               const string& boundary_label, RawArray<const int> boundary_fields);
 
-  // Set function and Jacobian evaluation based on a finite element model
-  void set_model(const Model& model, const bool use_energy);
+  // Set function and Jacobian evaluation based on a finite element ds
+  void set_ds(const DS& ds, const bool use_energy);
 
-  // Project a field to approximate an analytic function.  Requires a model.
+  // Project a field to approximate an analytic function.  Requires a ds.
   void project(const vector<Ref<const Analytic>> fs, InsertMode mode, Vec& x) const;
 
-  // Compare a vec against an analytic function.  Requires a model.
+  // Compare a vec against an analytic function.  Requires a ds.
   T L2_error_vs_exact(const Vec& v) const;
 
   // Write mesh and solution vector to a .vtk file

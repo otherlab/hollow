@@ -19,7 +19,7 @@ public:
 
   MPI_Comm comm() const;
 
-  void set_operators(Mat& A, Mat& P, MatStructure flag);
+  void set_operators(Mat& A, Mat& P);
 
   void set_from_options();
 

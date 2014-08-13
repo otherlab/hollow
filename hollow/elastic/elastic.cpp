@@ -3,7 +3,7 @@
 #include <hollow/elastic/laplace.h>
 #include <hollow/elastic/neo_hookean.h>
 #include <hollow/iga/iga.h>
-#include <hollow/tao/solver.h>
+#include <hollow/tao/tao.h>
 #include <hollow/petsc/mpi.h>
 #include <geode/array/NdArray.h>
 #include <geode/math/constants.h>
@@ -56,22 +56,21 @@ public:
     return snes;
   }
 
-  Ref<TaoSolver> create_tao() const {
-    const auto tao = new_<TaoSolver>(comm());
-    CHECK(TaoSetType(tao->tao,"tao_nls"));
-    const auto gradient = [](::TaoSolver, ::Vec u, ::Vec grad, void* ctx) {
+  Ref<Tao> create_tao() const {
+    const auto tao = new_<Tao>(comm());
+    CHECK(TaoSetType(tao->tao,"nls"));
+    const auto gradient = [](::Tao, ::Vec u, ::Vec grad, void* ctx) {
       const Self& self = *(const Self*)ctx;
       CHECK(IGAComputeFunction(self.iga,u,grad));
       return PetscErrorCode(0);
     };
-    const auto hessian = [](::TaoSolver, ::Vec u, ::Mat* A, ::Mat* P, MatStructure* flag, void* ctx) {
+    const auto hessian = [](::Tao, ::Vec u, ::Mat A, ::Mat P, void* ctx) {
       const Self& self = *(const Self*)ctx;
-      GEODE_ASSERT(*A==*P);
-      CHECK(IGAComputeJacobian(self.iga,u,*A));
-      *flag = SAME_NONZERO_PATTERN;
+      GEODE_ASSERT(A==P);
+      CHECK(IGAComputeJacobian(self.iga,u,A));
       PetscFunctionReturn(0);
     };
-    CHECK(TaoSetObjectiveRoutine(tao->tao,objective<::TaoSolver>,(void*)this));
+    CHECK(TaoSetObjectiveRoutine(tao->tao,objective<::Tao>,(void*)this));
     CHECK(TaoSetGradientRoutine(tao->tao,gradient,(void*)this));
     const auto A = create_mat();
     CHECK(TaoSetHessianRoutine(tao->tao,A->m,A->m,hessian,(void*)this));
@@ -147,6 +146,7 @@ public:
   }
 };
 
+#if 0
 template<class Material> struct ElasticModel : public Model {
   GEODE_DECLARE_TYPE(GEODE_NO_EXPORT)
   typedef ElasticModel Self;
@@ -244,13 +244,16 @@ public:
 template<class Material> bool ElasticModel<Material>::active = false;
 template<class Material> Material ElasticModel<Material>::material(uninit);
 template<class Material> typename ElasticModel<Material>::TV ElasticModel<Material>::minus_rho_g;
+#endif
 
 template<> GEODE_DEFINE_TYPE(ElasticIGA<LaplaceCM<2>>)
 template<> GEODE_DEFINE_TYPE(ElasticIGA<NeoHookean<2>>)
 template<> GEODE_DEFINE_TYPE(ElasticIGA<NeoHookean<3>>)
+#if 0
 template<> GEODE_DEFINE_TYPE(ElasticModel<LaplaceCM<2>>)
 template<> GEODE_DEFINE_TYPE(ElasticModel<NeoHookean<2>>)
 template<> GEODE_DEFINE_TYPE(ElasticModel<NeoHookean<3>>)
+#endif
 
 }
 }
@@ -268,12 +271,14 @@ template<class Material> static void wrap_helper(const char* material) {
       .GEODE_METHOD(create_tao)
       ;
   } {
+#if 0
     static const auto name = format("%sElasticModel%dd",material,d);
     typedef ElasticModel<Material> Self;
     typedef typename Self::FEs FEs;
     Class<Self>(name.c_str())
       .GEODE_INIT(const FEs&,const FEs&,const FEs&,const Analytic&,RawArray<const T>,const TV)
       ;
+#endif
   }
 }
 

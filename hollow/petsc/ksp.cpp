@@ -18,8 +18,8 @@ MPI_Comm KSP::comm() const {
   return PetscObjectComm((PetscObject)ksp);
 }
 
-void KSP::set_operators(Mat& A, Mat& P, MatStructure flag) {
-  CHECK(KSPSetOperators(ksp,A.m,P.m,flag));
+void KSP::set_operators(Mat& A, Mat& P) {
+  CHECK(KSPSetOperators(ksp,A.m,P.m));
 }
 
 void KSP::set_from_options() {

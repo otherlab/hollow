@@ -73,7 +73,7 @@ bool SNES::has_objective() const {
 }
 
 bool SNES::has_jacobian() const {
-  PetscErrorCode (*jacobian)(::SNES,::Vec,::Mat*,::Mat*,MatStructure*,void*);
+  PetscErrorCode (*jacobian)(::SNES,::Vec,::Mat,::Mat,void*);
   CHECK(SNESGetJacobian(snes,0,0,&jacobian,0));
   return jacobian!=0;
 }
@@ -93,11 +93,11 @@ void SNES::consistency_test(const Vec& x, const T small, const T rtol, const T a
   const auto f = x.clone();
   residual(x,f);
   ::KSP ksp;
-  ::Mat A,P;MatStructure flag;
+  ::Mat A,P;
   if (has_jacobian) {
     CHECK(SNESGetKSP(snes,&ksp));
-    CHECK(KSPGetOperators(ksp,&A,&P,&flag));
-    CHECK(SNESComputeJacobian(snes,x.v,&A,&P,&flag));
+    CHECK(KSPGetOperators(ksp,&A,&P));
+    CHECK(SNESComputeJacobian(snes,x.v,A,P));
   }
 
   // Try a variety of differential shifts

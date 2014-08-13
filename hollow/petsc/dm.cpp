@@ -189,7 +189,8 @@ void DMPlex::create_default_section(const vector<string>& names, const vector<Re
   // Create section
   PetscSection section;
   CHECK(DMPlexCreateSection(dm,dim,int(fes.size()),components.data(),dofs.data(),
-    boundaries.size(),boundary_fields.data(),boundaries.data(),&section));
+    boundaries.size(),boundary_fields.data(),boundaries.data(),
+    0,&section));
   if (names.size())
     for (const int i : range(int(names.size())))
       if (names[i].size())
@@ -202,6 +203,7 @@ void DMPlex::create_default_section(const vector<string>& names, const vector<Re
     CHECK(ISDestroy(&boundaries[0]));
 }
 
+#if 0
 void DMPlex::set_model(const Model& model, const bool use_energy) {
   this->model = ref(model);
   CHECK(DMSNESSetFunctionLocal(dm,DMPlexComputeResidualFEM,(void*)&model.fem));
@@ -278,6 +280,7 @@ void DMPlex::write_vtk(const string& filename, const Vec& v) const {
   CHECK(DMRestoreLocalVector(dm,&local));
   CHECK(PetscViewerDestroy(&viewer));
 }
+#endif
 
 Ref<DMPlex> dmplex_unit_box(const MPI_Comm comm, const int dim) {
   ::DM dm;
@@ -396,10 +399,12 @@ void wrap_dm() {
       .GEODE_METHOD(mark_boundary)
       .GEODE_METHOD(mark)
       .GEODE_METHOD(create_default_section)
+#if 0
       .GEODE_METHOD(set_model)
       .GEODE_METHOD(project)
       .GEODE_METHOD(L2_error_vs_exact)
       .GEODE_METHOD(write_vtk)
+#endif
       ;
   }
 

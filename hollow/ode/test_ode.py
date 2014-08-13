@@ -49,7 +49,7 @@ def test_laplace():
   debug = 0
   petsc_reinitialize()
   petsc_set_options('''laplace
-    -tao_type tao_lmvm -tao_lmm_vectors 20 -tao_max_it 1000
+    -tao_type lmvm -tao_lmm_vectors 20 -tao_max_it 1000
     -tao_fatol 1e-10 -tao_frtol 1e-10
     '''.split())
   if debug:
@@ -92,7 +92,7 @@ def test_caternary():
   debug = 0
   petsc_reinitialize()
   petsc_set_options('''laplace
-    -tao_type tao_lmvm -tao_lmm_vectors 20 -tao_max_it 1000
+    -tao_type lmvm -tao_lmm_vectors 20 -tao_max_it 1000
     -tao_fatol 1e-10 -tao_frtol 1e-10
     '''.split())
   if debug:
@@ -141,7 +141,7 @@ def test_caternary():
 
   # Solve
   petsc_set_options('''caternary -tao_view -tao_monitor -tao_converged_reason
-    -tao_type tao_lmvm -tao_lmm_vectors 20 -tao_max_it 1200
+    -tao_type lmvm -tao_lmm_vectors 20 -tao_max_it 1200
     '''.split())
     # -tao_fatol 1e-10 -tao_frtol 1e-10
   import pylab

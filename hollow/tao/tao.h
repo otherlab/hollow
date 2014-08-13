@@ -3,24 +3,24 @@
 
 #include <hollow/petsc/vec.h>
 #include <hollow/petsc/snes.h>
-#include <taosolver.h>
+#include <petsctao.h>
 namespace hollow {
 
-struct TaoSolver : public Object {
+struct Tao : public Object {
   GEODE_DECLARE_TYPE(HOLLOW_EXPORT)
   typedef Object Base;
   typedef PetscReal T;
 
-  const ::TaoSolver tao;
+  const ::Tao tao;
 
   // Optional SNES from which to derive evaluation functions
   Ptr<const SNES> snes;
   Ptr<Mat> mat;
 
 protected:
-  TaoSolver(const MPI_Comm comm);
+  Tao(const MPI_Comm comm);
 public:
-  ~TaoSolver();
+  ~Tao();
 
   MPI_Comm comm() const;
 

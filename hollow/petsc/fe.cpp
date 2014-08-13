@@ -53,11 +53,14 @@ FE::FE(const MPI_Comm comm, const int dim, const int components, const string& p
   /* Create quadrature (with specified order if given) */
   PetscQuadrature q;
   CHECK(PetscDTGaussJacobiQuadrature(dim,qorder>0?qorder:order,-1,1,&q));
-  GEODE_ASSERT(q.numPoints,"Empty quadratures cause havoc elsewhere, need order at least 1");
+  int n_points;
+  const T* points;
+  CHECK(PetscQuadratureGetData(q,0,&n_points,&points,0));
+  GEODE_ASSERT(n_points,"Empty quadratures cause havoc elsewhere, need order at least 1");
   cout <<(prefix.size()?"fe ":"fe")<<prefix<<": dim "<<dim<<", quad ";
-  if (dim==1) cout << RawArray<const T>(q.numPoints,q.points)<<endl;
-  else if (dim==2) cout << RawArray<const Vector<T,2>>(q.numPoints,(const Vector<T,2>*)q.points)<<endl;
-  else if (dim==3) cout << RawArray<const Vector<T,3>>(q.numPoints,(const Vector<T,3>*)q.points)<<endl;
+  if (dim==1) cout << RawArray<const T>(n_points,points)<<endl;
+  else if (dim==2) cout << RawArray<const Vector<T,2>>(n_points,(const Vector<T,2>*)points)<<endl;
+  else if (dim==3) cout << RawArray<const Vector<T,3>>(n_points,(const Vector<T,3>*)points)<<endl;
   CHECK(PetscFESetQuadrature(fe,q));
 }
 

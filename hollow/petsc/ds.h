@@ -1,4 +1,4 @@
-// Wrapper around PetscFEM
+// Wrapper around PetscDS
 #pragma once
 
 #include <hollow/petsc/fe.h>
@@ -11,7 +11,7 @@ using std::vector;
 
 // Physics definitions for petsc finite elements
 // For details, see fem.pdf
-struct Model : public Object {
+struct DS : public Object {
   GEODE_DECLARE_TYPE(GEODE_NO_EXPORT) 
   typedef Object Base;
   typedef PetscReal T;
@@ -24,7 +24,7 @@ struct Model : public Object {
   const FEs fe, fe_aux, fe_bd;
   const Array<PetscFE> fep, fep_aux, fep_bd; // Alternate views of fe et al.
 public:
-  PetscFEM fem;
+  PetscDS ds;
 
   #define FE_ARGS const T u[], const T du[], const T a[], const T da[], const T x[]
   typedef void(*Interior)(FE_ARGS, T result[]);
@@ -43,9 +43,9 @@ public:
 protected:
   // Create a finite element model with special dimension dim,
   // and fields with component counts fields[0], fields[1], etc.
-  Model(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd);
+  DS(const FEs& fe, const FEs& fe_aux, const FEs& fe_bd);
 public:
-  ~Model();
+  ~DS();
 };
 
 }
